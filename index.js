@@ -34,7 +34,7 @@ client.on('messageCreate', message => {
 });
 
 client.on('messageCreate', async message => {
-  if (message.content.startsWith('!clear')) {
+  if (message.content.startsWith('clear')) {
     // Only allow you (madboy_0079) to use the command
     const ownerId = '1354501822429265921';
     if (message.author.id !== ownerId) {
@@ -47,7 +47,7 @@ client.on('messageCreate', async message => {
     }
 
     try {
-      const messages = await message.channel.messages.fetch({ limit: 100 });
+      const messages = await message.channel.messages.fetch({ limit: 10000 });
       const userMessages = messages.filter(msg => msg.author.id === user.id);
       const deleted = await message.channel.bulkDelete(userMessages, true);
       message.reply(`Deleted ${deleted.size} messages from ${user.tag}`);
