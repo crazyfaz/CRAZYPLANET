@@ -34,7 +34,7 @@ client.on('messageCreate', message => {
 });
 
 client.on('messageCreate', async message => {
-  if (message.content.startsWith('clear')) {
+  if (message.content.startsWith('Clear')) {
     // Only allow you (madboy_0079) to use the command
     const ownerId = '1354501822429265921';
     if (message.author.id !== ownerId) {
