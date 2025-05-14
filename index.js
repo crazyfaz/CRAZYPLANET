@@ -22,13 +22,13 @@ client.once('ready', () => {
 client.on('messageCreate', message => {
   const content = message.content.toLowerCase();
 
-  if (content === 'hi') {
-    message.reply('Hello🥰!');
-  } else if (content === 'help') {
-    message.reply('⚠️ ATTENTION @everyone this guy need help from you! 🧑‍✈️');
+  if (content === 'hey planet') {
+    message.reply('Hello there,im the CRAZYPLANET!');
+  } else if (content === 'help me') {
+    message.reply('Help');
   } else if (content === 'bye') {
-  message.reply('Goodbye! See you later! 👋');
-  } else if (content === 'dee myre') {
+  message.reply('Goodbye! and dont back again👊😂');
+  } else if (content === 'daa myre') {
   message.reply('podaa pundachi mone👊');
   }
 });
