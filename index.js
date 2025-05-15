@@ -15,6 +15,40 @@ const client = new Client({
   ]
 });
 
+const { EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder } = require('discord.js');
+
+client.on('messageCreate', async (message) => {
+  if (message.content === '/genderroles') {
+    if (message.author.bot) return;
+
+    const embed = new EmbedBuilder()
+      .setColor('#2B2D31') // dark mode style
+      .setTitle('Your gender')
+      .setDescription('You can choose only male or female option from this role picker')
+      .setFooter({
+        text: 'SYCO SIDE',
+        iconURL: 'https://i.postimg.cc/YSnZ70Dy/20250428-191755.png'
+      });
+
+    const maleButton = new ButtonBuilder()
+      .setCustomId('gender_male')
+      .setLabel('• Male')
+      .setStyle(ButtonStyle.Primary);
+
+    const femaleButton = new ButtonBuilder()
+      .setCustomId('gender_female')
+      .setLabel('• Female')
+      .setStyle(ButtonStyle.Danger);
+
+    const row = new ActionRowBuilder().addComponents(maleButton, femaleButton);
+
+    await message.channel.send({
+      embeds: [embed],
+      components: [row]
+    });
+  }
+});
+
 client.once('ready', () => {
   console.log(`Logged in as CRAZYPLANET#${client.user.discriminator}`);
 });
