@@ -53,7 +53,7 @@ client.on('messageCreate', async (message) => {
     if (!targetChannel) return message.reply("Couldn't find the target channel.");
 
     const embed = new EmbedBuilder()
-      .setColor('#2B2D31')
+      .setColor('#F507FA')
       .setTitle('Your gender')
       .setDescription('You can choose only male or female option from this role picker')
       .setThumbnail('https://i.postimg.cc/YSnZ70Dy/20250428-191755.png');
