@@ -12,11 +12,11 @@ const client = new Client({
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildMembers  // Added to manage roles
+    GatewayIntentBits.GuildMembers  // Needed for role management
   ]
 });
 
-// Role IDs (replace with your actual IDs)
+// Role IDs
 const MALE_ROLE_ID = '1372494324465537055';
 const FEMALE_ROLE_ID = '1372494544196603935';
 
@@ -27,7 +27,6 @@ client.once('ready', () => {
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
 
-  // Handle gender roles command
   if (message.content === '/genderroles') {
     const embed = new EmbedBuilder()
       .setColor('#2B2D31')
@@ -50,7 +49,7 @@ client.on('messageCreate', async (message) => {
     await message.channel.send({ embeds: [embed], components: [row] });
   }
 
-  // Your existing bad words, mention checks and other commands here
+  // Your existing bad words and other message commands...
   const badWords = ['fuck', 'idiot', 'stupid', 'dumb', 'bitch', 'asshole', 'phuck', 'fck', 'nigga', 'niggha', 'stfu', 'shut the fuck up', 'stfub', 'shut the fuck up bitch', 'lawde', 'myre'];
   const specificUser1 = '1372278464543068170';
   const specificUser2 = '1354501822429265921';
@@ -99,17 +98,27 @@ client.on('interactionCreate', async (interaction) => {
   if (!interaction.isButton()) return;
 
   try {
-    if (interaction.customId === 'gender_male') {
-      const role = interaction.guild.roles.cache.get(MALE_ROLE_ID);
-      if (!role) return interaction.reply({ content: 'Role not found.', ephemeral: true });
+    const member = interaction.member;
+    const maleRole = interaction.guild.roles.cache.get(MALE_ROLE_ID);
+    const femaleRole = interaction.guild.roles.cache.get(FEMALE_ROLE_ID);
 
-      await interaction.member.roles.add(role);
+    if (!maleRole || !femaleRole) {
+      return interaction.reply({ content: 'Role(s) not found.', ephemeral: true });
+    }
+
+    if (interaction.customId === 'gender_male') {
+      // Remove female role if present, add male role if missing
+      await member.roles.remove(femaleRole).catch(() => {});
+      if (!member.roles.cache.has(maleRole.id)) {
+        await member.roles.add(maleRole);
+      }
       await interaction.reply({ content: 'You got the Male role!', ephemeral: true });
     } else if (interaction.customId === 'gender_female') {
-      const role = interaction.guild.roles.cache.get(FEMALE_ROLE_ID);
-      if (!role) return interaction.reply({ content: 'Role not found.', ephemeral: true });
-
-      await interaction.member.roles.add(role);
+      // Remove male role if present, add female role if missing
+      await member.roles.remove(maleRole).catch(() => {});
+      if (!member.roles.cache.has(femaleRole.id)) {
+        await member.roles.add(femaleRole);
+      }
       await interaction.reply({ content: 'You got the Female role!', ephemeral: true });
     }
   } catch (error) {
