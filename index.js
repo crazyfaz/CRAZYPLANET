@@ -12,7 +12,10 @@ const {
   EmbedBuilder,
   ButtonBuilder,
   ButtonStyle,
-  ActionRowBuilder
+  ActionRowBuilder,
+  REST,
+  Routes,
+  SlashCommandBuilder
 } = require('discord.js');
 
 // Initialize client
@@ -24,6 +27,17 @@ const client = new Client({
     GatewayIntentBits.GuildMembers
   ]
 });
+
+// === Slash Command Registration ===
+const commands = [
+  new SlashCommandBuilder().setName('ageroles').setDescription('Post age role selector'),
+  new SlashCommandBuilder().setName('genderroles').setDescription('Post gender role selector')
+].map(command => command.toJSON());
+
+const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
+rest.put(Routes.applicationCommands(process.env.CLIENT_ID), { body: commands })
+  .then(() => console.log('✅ Slash commands registered.'))
+  .catch(console.error);
 
 // Constants for roles and channels
 const ROLES = {
@@ -52,87 +66,48 @@ client.once('ready', () => {
   console.log(`✅ Bot is live as ${client.user.tag}`);
 });
 
-// Message handler
-client.on('messageCreate', async (message) => {
-  if (message.author.bot) return;
+// === Command Interactions ===
+client.on('interactionCreate', async (interaction) => {
+  if (interaction.isChatInputCommand()) {
+    const { commandName, guild } = interaction;
 
-  const content = message.content.toLowerCase();
+    const channel = guild.channels.cache.get(CHANNELS.TARGET);
+    if (!channel) return interaction.reply({ content: '⚠️ Target channel not found.', ephemeral: true });
 
-  // === Gender Role Command ===
-  if (message.channel.id === CHANNELS.COMMAND && content === '/genderroles') {
-    const channel = message.guild.channels.cache.get(CHANNELS.TARGET);
-    if (!channel) return message.reply("⚠️ Target channel not found.");
+    if (commandName === 'genderroles') {
+      const embed = new EmbedBuilder()
+        .setColor('#F507FA')
+        .setTitle('𝐘𝐨𝐮𝐫 𝐆𝐞𝐧𝐝𝐞𝐫')
+        .setDescription('Select your gender from the options below. Only one can be active.')
+        .setThumbnail('https://i.postimg.cc/YSnZ70Dy/20250428-191755.png');
 
-    const embed = new EmbedBuilder()
-      .setColor('#F507FA')
-      .setTitle('𝐘𝐨𝐮𝐫 𝐆𝐞𝐧𝐝𝐞𝐫')
-      .setDescription('Select your gender from the options below. Only one can be active.')
-      .setThumbnail('https://i.postimg.cc/YSnZ70Dy/20250428-191755.png');
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('gender_male').setLabel('🧔 𝐌𝐀𝐋𝐄').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('gender_female').setLabel('👩 𝐅𝐄𝐌𝐀𝐋𝐄').setStyle(ButtonStyle.Success)
+      );
 
-    const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('gender_male').setLabel('🧔 𝐌𝐀𝐋𝐄').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('gender_female').setLabel('👩 𝐅𝐄𝐌𝐀𝐋𝐄').setStyle(ButtonStyle.Success)
-    );
+      await channel.send({ embeds: [embed], components: [row] });
+      return interaction.reply({ content: '✅ Gender role selector posted!', ephemeral: true });
+    }
 
-    await channel.send({ embeds: [embed], components: [row] });
-    return message.reply('✅ Gender role selector posted!');
-  }
+    if (commandName === 'ageroles') {
+      const embed = new EmbedBuilder()
+        .setColor('#F507FA')
+        .setTitle('𝐘𝐨𝐮𝐫 𝐀𝐠𝐞')
+        .setDescription('Pick your age category to get the appropriate role.')
+        .setThumbnail('https://i.postimg.cc/YSnZ70Dy/20250428-191755.png');
 
-  // === Age Role Command ===
-  if (message.channel.id === CHANNELS.COMMAND && content === '/ageroles') {
-    const channel = message.guild.channels.cache.get(CHANNELS.TARGET);
-    if (!channel) return message.reply("⚠️ Target channel not found.");
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('age_teen').setLabel('🐣 𝐓𝐄𝐄𝐍').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('age_adult').setLabel('🐓 𝐀𝐃𝐔𝐋𝐓').setStyle(ButtonStyle.Success)
+      );
 
-    const embed = new EmbedBuilder()
-      .setColor('#F507FA')
-      .setTitle('𝐘𝐨𝐮𝐫 𝐀𝐠𝐞')
-      .setDescription('Pick your age category to get the appropriate role.')
-      .setThumbnail('https://i.postimg.cc/YSnZ70Dy/20250428-191755.png');
-
-    const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('age_teen').setLabel('🐣 𝐓𝐄𝐄𝐍').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('age_adult').setLabel('🐓 𝐀𝐃𝐔𝐋𝐓').setStyle(ButtonStyle.Success)
-    );
-
-    await channel.send({ embeds: [embed], components: [row] });
-    return message.reply('✅ Age role selector posted!');
-  }
-
-  // === Bad Word Filter on Specific Mentions ===
-  const mentionedIDs = Array.from(message.mentions.users.keys());
-  const hasBadWord = badWords.some(word => content.includes(word));
-  const isFlaggedMention = mentionedIDs.some(id => flaggedUsers.includes(id));
-
-  if (hasBadWord && isFlaggedMention) {
-    return message.reply('Wanna fight? Then I’ll use my leg to kick your ass 🥱');
-  }
-
-  // === Fun Replies ===
-  if (content === 'hey crimzy') return message.reply('Heheeeyy there, I’m CRIMZYYYY!');
-  if (content === 'bye') return message.reply('Go away, and don’t come back again 😂');
-  if (content === 'daa myre') return message.reply('Podaa pundachi mone 👊');
-
-  // === Owner-only Clear Command ===
-  if (content.startsWith('clear')) {
-    if (message.author.id !== OWNER_ID) return message.reply("⛔ Only the bot owner can use this command.");
-
-    const user = message.mentions.users.first();
-    if (!user) return message.reply('Please mention a user to clear their messages.');
-
-    try {
-      const messages = await message.channel.messages.fetch({ limit: 100 });
-      const userMessages = messages.filter(msg => msg.author.id === user.id);
-      const deleted = await message.channel.bulkDelete(userMessages, true);
-      message.reply(`✅ Cleared ${deleted.size} messages from ${user.tag}`);
-    } catch (err) {
-      console.error(err);
-      message.reply('⚠️ Failed to delete messages. Messages older than 14 days can’t be deleted.');
+      await channel.send({ embeds: [embed], components: [row] });
+      return interaction.reply({ content: '✅ Age role selector posted!', ephemeral: true });
     }
   }
-});
 
-// Interaction Handler for Buttons
-client.on('interactionCreate', async (interaction) => {
+  // === Button Interactions ===
   if (!interaction.isButton()) return;
 
   const { customId, member, guild } = interaction;
@@ -174,6 +149,41 @@ client.on('interactionCreate', async (interaction) => {
     console.error('❌ Interaction error:', error);
     if (!interaction.replied) {
       await interaction.reply({ content: 'Something went wrong while assigning the role.', ephemeral: true });
+    }
+  }
+});
+
+// === Text Command Handler ===
+client.on('messageCreate', async (message) => {
+  if (message.author.bot) return;
+
+  const content = message.content.toLowerCase();
+  const mentionedIDs = Array.from(message.mentions.users.keys());
+  const hasBadWord = badWords.some(word => content.includes(word));
+  const isFlaggedMention = mentionedIDs.some(id => flaggedUsers.includes(id));
+
+  if (hasBadWord && isFlaggedMention) {
+    return message.reply('Wanna fight? Then I’ll use my leg to kick your ass 🥱');
+  }
+
+  if (content === 'hey crimzy') return message.reply('Heheeeyy there, I’m CRIMZYYYY!');
+  if (content === 'bye') return message.reply('Go away, and don’t come back again 😂');
+  if (content === 'daa myre') return message.reply('Podaa pundachi mone 👊');
+
+  if (content.startsWith('clear')) {
+    if (message.author.id !== OWNER_ID) return message.reply("⛔ Only the bot owner can use this command.");
+
+    const user = message.mentions.users.first();
+    if (!user) return message.reply('Please mention a user to clear their messages.');
+
+    try {
+      const messages = await message.channel.messages.fetch({ limit: 100 });
+      const userMessages = messages.filter(msg => msg.author.id === user.id);
+      const deleted = await message.channel.bulkDelete(userMessages, true);
+      message.reply(`✅ Cleared ${deleted.size} messages from ${user.tag}`);
+    } catch (err) {
+      console.error(err);
+      message.reply('⚠️ Failed to delete messages. Messages older than 14 days can’t be deleted.');
     }
   }
 });
