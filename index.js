@@ -25,8 +25,8 @@ const client = new Client({
 
 const MALE_ROLE_ID = '1372494324465537055';
 const FEMALE_ROLE_ID = '1372494544196603935';
-const SOURCE_CHANNEL_ID = '1372507857450307654'; // Where command is typed
-const TARGET_CHANNEL_ID = '1371516002361413753'; // Where embed is sent
+const SOURCE_CHANNEL_ID = '1372507857450307654'; // command typed here
+const TARGET_CHANNEL_ID = '1371516002361413753'; // embed appears here
 
 client.once('ready', () => {
   console.log(`Logged in as ${client.user.tag}`);
@@ -35,7 +35,6 @@ client.once('ready', () => {
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
 
-  // Gender Role Selector Command
   if (message.channel.id === SOURCE_CHANNEL_ID && message.content === '/genderroles') {
     const targetChannel = message.guild.channels.cache.get(TARGET_CHANNEL_ID);
     if (!targetChannel) {
@@ -64,14 +63,14 @@ client.on('messageCreate', async (message) => {
     await message.reply('Role selector has been posted in the gender roles channel!');
   }
 
-  // --- Existing Features ---
-
+  // Existing features
   const badWords = ['fuck', 'idiot', 'stupid', 'dumb', 'bitch', 'asshole', 'phuck', 'fck', 'nigga', 'niggha', 'stfu', 'shut the fuck up', 'stfub', 'shut the fuck up bitch', 'lawde', 'myre'];
   const specificUser1 = '1372278464543068170';
   const specificUser2 = '1354501822429265921';
 
   const content = message.content.toLowerCase();
   const mentionedIDs = Array.from(message.mentions.users.keys());
+  const hasBadWord = badWords.some(word => content.includes(word));
 const express = require('express');
 const app = express();
 
@@ -99,8 +98,8 @@ const client = new Client({
 
 const MALE_ROLE_ID = '1372494324465537055';
 const FEMALE_ROLE_ID = '1372494544196603935';
-const SOURCE_CHANNEL_ID = '1372507857450307654'; // Where command is typed
-const TARGET_CHANNEL_ID = '1371516002361413753'; // Where embed is sent
+const SOURCE_CHANNEL_ID = '1372507857450307654'; // command typed here
+const TARGET_CHANNEL_ID = '1371516002361413753'; // embed appears here
 
 client.once('ready', () => {
   console.log(`Logged in as ${client.user.tag}`);
@@ -109,7 +108,6 @@ client.once('ready', () => {
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
 
-  // Gender Role Selector Command
   if (message.channel.id === SOURCE_CHANNEL_ID && message.content === '/genderroles') {
     const targetChannel = message.guild.channels.cache.get(TARGET_CHANNEL_ID);
     if (!targetChannel) {
@@ -138,8 +136,7 @@ client.on('messageCreate', async (message) => {
     await message.reply('Role selector has been posted in the gender roles channel!');
   }
 
-  // --- Existing Features ---
-
+  // Existing features
   const badWords = ['fuck', 'idiot', 'stupid', 'dumb', 'bitch', 'asshole', 'phuck', 'fck', 'nigga', 'niggha', 'stfu', 'shut the fuck up', 'stfub', 'shut the fuck up bitch', 'lawde', 'myre'];
   const specificUser1 = '1372278464543068170';
   const specificUser2 = '1354501822429265921';
@@ -184,7 +181,7 @@ client.on('messageCreate', async (message) => {
   }
 });
 
-// Gender Role Button Handler (One Role Only)
+// Handle button clicks
 client.on('interactionCreate', async (interaction) => {
   if (!interaction.isButton()) return;
 
@@ -220,13 +217,12 @@ client.on('interactionCreate', async (interaction) => {
 
 client.login(process.env.TOKEN);
 
+// Keep-alive backup
 const http = require('http');
 http.createServer((req, res) => {
   res.write('Bot is running!');
   res.end();
-}).listen(process.env.PORT || 3000);
-  const hasBadWord = badWords.some(word => content.includes(word));
-  const mentionsEither = mentionedIDs.includes(specificUser1) || mentionedIDs.includes(specificUser2);
+}).listen(process.env.PORT || 3000);￼Enter  const mentionsEither = mentionedIDs.includes(specificUser1) || mentionedIDs.includes(specificUser2);
 
   if (hasBadWord && mentionsEither) {
     return message.reply('Wanna fight ?, then i will use my leg to kick your ass🥱');
@@ -251,8 +247,8 @@ http.createServer((req, res) => {
       return message.reply('Please mention a user to delete their messages.');
     }
 
-y {
-      const messages = await message.channel.messages.fetch({ limit: 100 });
+    try {
+const messages = await message.channel.messages.fetch({ limit: 100 });
       const userMessages = messages.filter(msg => msg.author.id === user.id);
       const deleted = await message.channel.bulkDelete(userMessages, true);
       message.reply(`Deleted ${deleted.size} messages from ${user.tag}`);
@@ -263,7 +259,7 @@ y {
   }
 });
 
-// Gender Role Button Handler (One Role Only)
+// Handle button clicks
 client.on('interactionCreate', async (interaction) => {
   if (!interaction.isButton()) return;
 
@@ -277,3 +273,4 @@ client.on('interactionCreate', async (interaction) => {
     }
 
     if (interaction.customId === 'gender_male') {
+      await member.roles.remove(femaleRole).catch(() => {});
