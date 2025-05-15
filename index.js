@@ -18,32 +18,6 @@ const PORT = process.env.PORT || 3000;
 app.get('/', (req, res) => res.send('Bot is running!'));
 app.listen(PORT, () => console.log(`Keep-alive server started on port ${PORT}`));
 
-// === Bot Setup ===
-const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildMembers
-  ]
-});
-
-const OWNER_ID = process.env.OWNER_ID;
-const CLIENT_ID = process.env.CLIENT_ID;
-const GUILD_ID = process.env.GUILD_ID;
-
-const CHANNELS = {
-  COMMAND: '1372507857450307654',
-  TARGET: '1371516002361413753'
-};
-
-const ROLES = {
-  MALE: '1372494324465537055',
-  FEMALE: '1372494544196603935',
-  TEEN: '1372534842582896690',
-  ADULT: '1372534966134767708'
-};
-
 // === Message Commands & Filters ===
 const badWords = [
   'fuck', 'idiot', 'stupid', 'dumb', 'bitch', 'asshole', 'phuck', 'fck', 'nigga', 'niggha',
