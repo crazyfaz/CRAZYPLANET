@@ -1,11 +1,5 @@
-const express = require('express');
-const app = express();
-
-app.get('/', (req, res) => res.send('Bot is running!'));
-app.listen(process.env.PORT || 3000, () => console.log('Keep-alive server started.'));
-
 require('dotenv').config();
-
+const express = require('express');
 const {
   Client,
   GatewayIntentBits,
@@ -18,6 +12,12 @@ const {
   SlashCommandBuilder
 } = require('discord.js');
 
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.get('/', (req, res) => res.send('Bot is running!'));
+app.listen(PORT, () => console.log(`Keep-alive server started on port ${PORT}`));
+
 // === Bot Setup ===
 const client = new Client({
   intents: [
@@ -28,9 +28,9 @@ const client = new Client({
   ]
 });
 
-const OWNER_ID = '1354501822429265921';
-const CLIENT_ID = '1372278464543068170';
-const GUILD_ID = '1367900836801286244';
+const OWNER_ID = process.env.OWNER_ID;
+const CLIENT_ID = process.env.CLIENT_ID;
+const GUILD_ID = process.env.GUILD_ID;
 
 const CHANNELS = {
   COMMAND: '1372507857450307654',
@@ -51,16 +51,25 @@ const commands = [
 ].map(command => command.toJSON());
 
 const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
-rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), { body: commands })
-  .then(() => console.log('✅ Slash commands registered.'))
-  .catch(console.error);
+
+(async () => {
+  try {
+    await rest.put(
+      Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID),
+      { body: commands }
+    );
+    console.log('✅ Slash commands registered.');
+  } catch (error) {
+    console.error('❌ Failed to register commands:', error);
+  }
+})();
 
 // === Bot Ready ===
 client.once('ready', () => {
   console.log(`✅ Bot is live as ${client.user.tag}`);
 });
 
-// === Slash Command Handling ===
+// === Interaction Handling ===
 client.on('interactionCreate', async (interaction) => {
   if (interaction.isChatInputCommand()) {
     const { commandName, guild } = interaction;
@@ -109,6 +118,10 @@ client.on('interactionCreate', async (interaction) => {
     teen: guild.roles.cache.get(ROLES.TEEN),
     adult: guild.roles.cache.get(ROLES.ADULT)
   };
+
+  if (!roles.male || !roles.female || !roles.teen || !roles.adult) {
+    return interaction.reply({ content: '⚠️ Role configuration error. Please contact admin.', ephemeral: true });
+  }
 
   try {
     switch (customId) {
