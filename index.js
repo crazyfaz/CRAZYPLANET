@@ -12,11 +12,24 @@ const {
   SlashCommandBuilder
 } = require('discord.js');
 
+// === Setup Express Keep-Alive Server ===
 const app = express();
 const PORT = process.env.PORT || 3000;
-
 app.get('/', (req, res) => res.send('Bot is running!'));
-app.listen(PORT, () => console.log(`Keep-alive server started on port ${PORT}`));
+app.listen(PORT, () => console.log(`✅ Keep-alive server started on port ${PORT}`));
+
+// === Load Owner ID Early ===
+const OWNER_ID = process.env.OWNER_ID;
+
+// === Setup Discord Client ===
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMembers
+  ]
+});
 
 // === Message Commands & Filters ===
 const badWords = [
@@ -30,7 +43,7 @@ client.on('messageCreate', async (message) => {
 
   const content = message.content.toLowerCase();
 
-  // Bad word filter on flagged mentions (any channel)
+  // Bad word filter on flagged mentions
   const mentionedIDs = Array.from(message.mentions.users.keys());
   const hasBadWord = badWords.some(word => content.includes(word));
   const isFlaggedMention = mentionedIDs.some(id => flaggedUsers.includes(id));
@@ -48,6 +61,7 @@ client.on('messageCreate', async (message) => {
     if (message.author.id !== OWNER_ID) return message.reply("⛔ Only the bot owner can use this command.");
     const user = message.mentions.users.first();
     if (!user) return message.reply('Please mention a user to clear their messages.');
+
     try {
       const messages = await message.channel.messages.fetch({ limit: 100 });
       const userMessages = messages.filter(msg => msg.author.id === user.id);
@@ -58,6 +72,10 @@ client.on('messageCreate', async (message) => {
       message.reply('⚠️ Failed to delete messages. Messages older than 14 days can’t be deleted.');
     }
   }
+});
+
+client.once('ready', () => {
+  console.log(`✅ Bot is live as ${client.user.tag}`);
 });
 
 client.login(process.env.TOKEN);
