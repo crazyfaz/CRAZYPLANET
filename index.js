@@ -84,14 +84,14 @@ client.on('messageCreate', async (message) => {
     if (!channel) return message.reply("⚠️ Target channel not found.");
 
     const embed = new EmbedBuilder()
-      .setColor('#5865F2')
+      .setColor('#F507FA')
       .setTitle('Your Age Group')
       .setDescription('Pick your age category to get the appropriate role.')
-      .setThumbnail('https://i.postimg.cc/SKXzTNQ6/age-thumbnail.png');
+      .setThumbnail('https://i.postimg.cc/YSnZ70Dy/20250428-191755.png');
 
     const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('age_teen').setLabel('🧒 TEEN').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('age_adult').setLabel('🧑 ADULT').setStyle(ButtonStyle.Success)
+      new ButtonBuilder().setCustomId('age_teen').setLabel('🐣 TEEN').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('age_adult').setLabel('🐓 ADULT').setStyle(ButtonStyle.Success)
     );
 
     await channel.send({ embeds: [embed], components: [row] });
