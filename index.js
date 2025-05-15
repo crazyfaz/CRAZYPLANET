@@ -70,7 +70,6 @@ client.on('messageCreate', async (message) => {
 
   const content = message.content.toLowerCase();
   const mentionedIDs = Array.from(message.mentions.users.keys());
-  const hasBadWord = badWords.some(word => content.includes(word));
 const express = require('express');
 const app = express();
 
@@ -181,7 +180,6 @@ client.on('messageCreate', async (message) => {
   }
 });
 
-// Handle button clicks
 client.on('interactionCreate', async (interaction) => {
   if (!interaction.isButton()) return;
 
@@ -217,12 +215,13 @@ client.on('interactionCreate', async (interaction) => {
 
 client.login(process.env.TOKEN);
 
-// Keep-alive backup
+// Keep-alive server
 const http = require('http');
 http.createServer((req, res) => {
   res.write('Bot is running!');
   res.end();
-}).listen(process.env.PORT || 3000);￼Enter  const mentionsEither = mentionedIDs.includes(specificUser1) || mentionedIDs.includes(specificUser2);
+}).listen(process.env.PORT || 3000);￼Enter  const hasBadWord = badWords.some(word => content.includes(word));
+  const mentionsEither = mentionedIDs.includes(specificUser1) || mentionedIDs.includes(specificUser2);
 
   if (hasBadWord && mentionsEither) {
     return message.reply('Wanna fight ?, then i will use my leg to kick your ass🥱');
@@ -247,8 +246,8 @@ http.createServer((req, res) => {
       return message.reply('Please mention a user to delete their messages.');
     }
 
-    try {
-const messages = await message.channel.messages.fetch({ limit: 100 });
+y {
+      const messages = await message.channel.messages.fetch({ limit: 100 });
       const userMessages = messages.filter(msg => msg.author.id === user.id);
       const deleted = await message.channel.bulkDelete(userMessages, true);
       message.reply(`Deleted ${deleted.size} messages from ${user.tag}`);
@@ -259,7 +258,6 @@ const messages = await message.channel.messages.fetch({ limit: 100 });
   }
 });
 
-// Handle button clicks
 client.on('interactionCreate', async (interaction) => {
   if (!interaction.isButton()) return;
 
