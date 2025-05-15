@@ -28,12 +28,12 @@ client.on('messageCreate', async (message) => {
       .setThumbnail('https://i.postimg.cc/YSnZ70Dy/20250428-191755.png')
 
     const maleButton = new ButtonBuilder()
-      .setCustomId('gender_male')
+      .setCustomId('1372494324465537055')
       .setLabel('• Male')
       .setStyle(ButtonStyle.Primary);
 
     const femaleButton = new ButtonBuilder()
-      .setCustomId('gender_female')
+      .setCustomId('1372494544196603935')
       .setLabel('• Female')
       .setStyle(ButtonStyle.Danger);
 
