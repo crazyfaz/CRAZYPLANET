@@ -25,10 +25,7 @@ client.on('messageCreate', async (message) => {
       .setColor('#2B2D31') // dark mode style
       .setTitle('Your gender')
       .setDescription('You can choose only male or female option from this role picker')
-      .setFooter({
-        text: 'SYCO SIDE',
-        iconURL: 'https://i.postimg.cc/YSnZ70Dy/20250428-191755.png'
-      });
+      .setThumbnail('https://i.postimg.cc/YSnZ70Dy/20250428-191755.png')
 
     const maleButton = new ButtonBuilder()
       .setCustomId('gender_male')
