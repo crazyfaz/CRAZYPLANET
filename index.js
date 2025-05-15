@@ -20,7 +20,7 @@ client.once('ready', () => {
 });
 
 // Bad words list
-const badWords = ['fuck', 'idiot', 'stupid', 'dumb', 'bitch', 'asshole'];
+const badWords = ['fuck', 'idiot', 'stupid', 'dumb', 'bitch', 'asshole', 'phuck', 'fck', 'nigga', 'niggha', 'stfu', 'shut the fuck up', 'stfub', 'shut the fuck up bitch', 'lawde', 'myre'];
 
 // Specific user IDs
 const specificUser1 = '1372278464543068170';
