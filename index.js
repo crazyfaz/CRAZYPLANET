@@ -19,13 +19,16 @@ client.once('ready', () => {
   console.log(`Logged in as CRAZYPLANET#${client.user.discriminator}`);
 });
 
-const badWords = ['fuck', 'idiot', 'stupid', 'dumb', 'bitch', 'asshole']; // Add/remove words as needed
+const badWords = ['fuck', 'idiot', 'stupid', 'dumb', 'bitch', 'asshole'];
+
+// Your specific user IDs
+const specificUser1 = '1372278464543068170';
+const specificUser2 = '1354501822429265921';
 
 client.on('messageCreate', async message => {
   const content = message.content.toLowerCase();
   const mentionedUsers = message.mentions.users;
 
-  // Ignore bots
   if (message.author.bot) return;
 
   // 1. Keyword triggers
@@ -39,9 +42,14 @@ client.on('messageCreate', async message => {
     return message.reply('podaa pundachi mone👊');
   }
 
-  // 2. Bad words + 2 mentions
+  // 2. Bad words + mentions specific two users
   const hasBadWord = badWords.some(word => content.includes(word));
-  if (hasBadWord && mentionedUsers.size >= 2) {
+  const mentionedIDs = Array.from(mentionedUsers.keys());
+
+  const mentionsBothSpecificUsers =
+    mentionedIDs.includes(specificUser1) && mentionedIDs.includes(specificUser2);
+
+  if (hasBadWord && mentionsBothSpecificUsers) {
     return message.reply('Wanna fight ?, then i will use my leg to kick your ass🥱');
   }
 
