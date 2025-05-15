@@ -22,12 +22,12 @@ client.once('ready', () => {
 client.on('messageCreate', message => {
   const content = message.content.toLowerCase();
 
-  if (content === 'hey planet') {
-    message.reply('Hello there,im the CRAZYPLANET!');
-  } else if (content === 'help me') {
-    message.reply('Help');
+  if (content === 'hey crimzy') {
+    message.reply('Heheeeyy there,im CRIMZYYYY!');
+  } else if (content === 'fuck you') {
+    message.reply('Wanna fight ?, then i will use my leg to kick your ass🥱');
   } else if (content === 'bye') {
-  message.reply('Goodbye! and dont back again👊😂');
+  message.reply('Go away, and dont back again😂');
   } else if (content === 'daa myre') {
   message.reply('podaa pundachi mone👊');
   }
