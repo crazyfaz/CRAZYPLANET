@@ -19,7 +19,7 @@ client.once('ready', () => {
   console.log(`Logged in as CRAZYPLANET#${client.user.discriminator}`);
 });
 
-// Bad word list
+// Bad words list
 const badWords = ['fuck', 'idiot', 'stupid', 'dumb', 'bitch', 'asshole'];
 
 // Specific user IDs
@@ -32,19 +32,18 @@ client.on('messageCreate', async message => {
   const content = message.content.toLowerCase();
   const mentionedIDs = Array.from(message.mentions.users.keys());
 
-  // Check for bad word
+  // Check for bad words
   const hasBadWord = badWords.some(word => content.includes(word));
 
-  // Check if both specific users are mentioned
-  const mentionsBoth =
-    mentionedIDs.includes(specificUser1) && mentionedIDs.includes(specificUser2);
+  // Check if either specific user is mentioned
+  const mentionsEither =
+    mentionedIDs.includes(specificUser1) || mentionedIDs.includes(specificUser2);
 
-  // Response for bad words + mentions
-  if (hasBadWord && mentionsBoth) {
+  if (hasBadWord && mentionsEither) {
     return message.reply('Wanna fight ?, then i will use my leg to kick your ass🥱');
   }
 
-  // Fun replies
+  // Other responses
   if (content === 'hey crimzy') {
     return message.reply('Heheeeyy there, im CRIMZYYYY!');
   } else if (content === 'bye') {
