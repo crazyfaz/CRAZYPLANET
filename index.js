@@ -17,32 +17,21 @@ const client = new Client({
 
 const { EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder } = require('discord.js');
 
-client.on('messageCreate', async (message) => {
-  if (message.content === '/genderroles') {
-    if (message.author.bot) return;
+client.on('interactionCreate', async (interaction) => {
+  if (!interaction.isButton()) return;
 
-    const embed = new EmbedBuilder()
-      .setColor('#2B2D31') // dark mode style
-      .setTitle('Your gender')
-      .setDescription('You can choose only male or female option from this role picker')
-      .setThumbnail('https://i.postimg.cc/YSnZ70Dy/20250428-191755.png')
+  if (interaction.customId === 'gender_male') {
+    const role = interaction.guild.roles.cache.get('1372494324465537055'); // Male role ID
+    if (!role) return interaction.reply({ content: 'Role not found.', ephemeral: true });
+    await interaction.member.roles.add(role);
+    await interaction.reply({ content: 'You got the Male role!', ephemeral: true });
+  }
 
-    const maleButton = new ButtonBuilder()
-      .setCustomId('1372494324465537055')
-      .setLabel('🧔𝐌𝐀𝐋𝐄')
-      .setStyle(ButtonStyle.Primary);
-
-    const femaleButton = new ButtonBuilder()
-      .setCustomId('1372494544196603935')
-      .setLabel('👩𝐅𝐄𝐌𝐀𝐋𝐄')
-      .setStyle(ButtonStyle.Danger);
-
-    const row = new ActionRowBuilder().addComponents(maleButton, femaleButton);
-
-    await message.channel.send({
-      embeds: [embed],
-      components: [row]
-    });
+  if (interaction.customId === 'gender_female') {
+    const role = interaction.guild.roles.cache.get('1372494544196603935'); // Female role ID
+    if (!role) return interaction.reply({ content: 'Role not found.', ephemeral: true });
+    await interaction.member.roles.add(role);
+    await interaction.reply({ content: 'You got the Female role!', ephemeral: true });
   }
 });
 
