@@ -19,41 +19,41 @@ client.once('ready', () => {
   console.log(`Logged in as CRAZYPLANET#${client.user.discriminator}`);
 });
 
+// Bad word list
 const badWords = ['fuck', 'idiot', 'stupid', 'dumb', 'bitch', 'asshole'];
 
-// Your specific user IDs
+// Specific user IDs
 const specificUser1 = '1372278464543068170';
 const specificUser2 = '1354501822429265921';
 
 client.on('messageCreate', async message => {
-  const content = message.content.toLowerCase();
-  const mentionedUsers = message.mentions.users;
-
   if (message.author.bot) return;
 
-  // 1. Keyword triggers
+  const content = message.content.toLowerCase();
+  const mentionedIDs = Array.from(message.mentions.users.keys());
+
+  // Check for bad word
+  const hasBadWord = badWords.some(word => content.includes(word));
+
+  // Check if both specific users are mentioned
+  const mentionsBoth =
+    mentionedIDs.includes(specificUser1) && mentionedIDs.includes(specificUser2);
+
+  // Response for bad words + mentions
+  if (hasBadWord && mentionsBoth) {
+    return message.reply('Wanna fight ?, then i will use my leg to kick your ass🥱');
+  }
+
+  // Fun replies
   if (content === 'hey crimzy') {
     return message.reply('Heheeeyy there, im CRIMZYYYY!');
-  } else if (content === 'fuck you') {
-    return message.reply('Wanna fight ?, then i will use my leg to kick your ass🥱');
   } else if (content === 'bye') {
     return message.reply('Go away, and dont back again😂');
   } else if (content === 'daa myre') {
     return message.reply('podaa pundachi mone👊');
   }
 
-  // 2. Bad words + mentions specific two users
-  const hasBadWord = badWords.some(word => content.includes(word));
-  const mentionedIDs = Array.from(mentionedUsers.keys());
-
-  const mentionsBothSpecificUsers =
-    mentionedIDs.includes(specificUser1) && mentionedIDs.includes(specificUser2);
-
-  if (hasBadWord && mentionsBothSpecificUsers) {
-    return message.reply('Wanna fight ?, then i will use my leg to kick your ass🥱');
-  }
-
-  // 3. Clear messages
+  // Clear command
   if (content.startsWith('Clear')) {
     const ownerId = '1354501822429265921';
     if (message.author.id !== ownerId) {
