@@ -65,13 +65,13 @@ client.on('messageCreate', async (message) => {
 
     const embed = new EmbedBuilder()
       .setColor('#F507FA')
-      .setTitle('Your Gender')
+      .setTitle('𝐘𝐨𝐮𝐫 𝐆𝐞𝐧𝐝𝐞𝐫')
       .setDescription('Select your gender from the options below. Only one can be active.')
       .setThumbnail('https://i.postimg.cc/YSnZ70Dy/20250428-191755.png');
 
     const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('gender_male').setLabel('🧔 MALE').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('gender_female').setLabel('👩 FEMALE').setStyle(ButtonStyle.Danger)
+      new ButtonBuilder().setCustomId('gender_male').setLabel('🧔 𝐌𝐀𝐋𝐄').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('gender_female').setLabel('👩 𝐅𝐄𝐌𝐀𝐋𝐄').setStyle(ButtonStyle.Success)
     );
 
     await channel.send({ embeds: [embed], components: [row] });
@@ -85,13 +85,13 @@ client.on('messageCreate', async (message) => {
 
     const embed = new EmbedBuilder()
       .setColor('#F507FA')
-      .setTitle('Your Age Group')
+      .setTitle('𝐘𝐨𝐮𝐫 𝐀𝐠𝐞')
       .setDescription('Pick your age category to get the appropriate role.')
       .setThumbnail('https://i.postimg.cc/YSnZ70Dy/20250428-191755.png');
 
     const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('age_teen').setLabel('🐣 TEEN').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('age_adult').setLabel('🐓 ADULT').setStyle(ButtonStyle.Success)
+      new ButtonBuilder().setCustomId('age_teen').setLabel('🐣 𝐓𝐄𝐄𝐍').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('age_adult').setLabel('🐓 𝐀𝐃𝐔𝐋𝐓').setStyle(ButtonStyle.Success)
     );
 
     await channel.send({ embeds: [embed], components: [row] });
