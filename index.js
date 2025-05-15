@@ -29,12 +29,12 @@ client.on('messageCreate', async (message) => {
 
     const maleButton = new ButtonBuilder()
       .setCustomId('1372494324465537055')
-      .setLabel('• Male')
+      .setLabel('🧔𝐌𝐀𝐋𝐄')
       .setStyle(ButtonStyle.Primary);
 
     const femaleButton = new ButtonBuilder()
       .setCustomId('1372494544196603935')
-      .setLabel('• Female')
+      .setLabel('👩𝐅𝐄𝐌𝐀𝐋𝐄')
       .setStyle(ButtonStyle.Danger);
 
     const row = new ActionRowBuilder().addComponents(maleButton, femaleButton);
