@@ -2,9 +2,8 @@ const express = require('express');
 const app = express();
 
 app.get('/', (req, res) => res.send('Bot is running!'));
-app.listen(process.env.PORT || 3000, () => console.log('Keep-alive server started'));
+app.listen(process.env.PORT || 3000, () => console.log('Keep-alive server started.'));
 
-// Load environment variables
 require('dotenv').config();
 
 const {
@@ -16,6 +15,7 @@ const {
   ActionRowBuilder
 } = require('discord.js');
 
+// Initialize client
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -25,131 +25,157 @@ const client = new Client({
   ]
 });
 
-// Role and channel IDs
-const MALE_ROLE_ID = '1372494324465537055';
-const FEMALE_ROLE_ID = '1372494544196603935';
-const SOURCE_CHANNEL_ID = '1372507857450307654'; // Command channel
-const TARGET_CHANNEL_ID = '1371516002361413753'; // Channel where embed is sent
+// Constants for roles and channels
+const ROLES = {
+  MALE: '1372494324465537055',
+  FEMALE: '1372494544196603935',
+  TEEN: '1372534842582896690',
+  ADULT: '1372534966134767708'
+};
 
-// List of bad words to filter
-const badWords = ['fuck', 'idiot', 'stupid', 'dumb', 'bitch', 'asshole', 'phuck', 'fck', 'nigga', 'niggha', 'stfu', 'shut the fuck up', 'stfub', 'shut the fuck up bitch', 'lawde', 'myre'];
+const CHANNELS = {
+  COMMAND: '1372507857450307654',
+  TARGET: '1371516002361413753'
+};
 
-// Specific user IDs for bad word reply condition
-const specificUser1 = '1372278464543068170';
-const specificUser2 = '1354501822429265921';
+const OWNER_ID = '1354501822429265921';
+
+// Word filter
+const badWords = [
+  'fuck', 'idiot', 'stupid', 'dumb', 'bitch', 'asshole', 'phuck', 'fck', 'nigga', 'niggha',
+  'stfu', 'shut the fuck up', 'stfub', 'shut the fuck up bitch', 'lawde', 'myre'
+];
+
+const flaggedUsers = ['1372278464543068170', OWNER_ID];
 
 client.once('ready', () => {
-  console.log(`Logged in as ${client.user.tag}`);
+  console.log(`✅ Bot is live as ${client.user.tag}`);
 });
 
+// Message handler
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
 
   const content = message.content.toLowerCase();
 
-  // Command to post gender roles embed with buttons
-  if (message.channel.id === SOURCE_CHANNEL_ID && content === '/genderroles') {
-    const targetChannel = message.guild.channels.cache.get(TARGET_CHANNEL_ID);
-    if (!targetChannel) return message.reply("Couldn't find the target channel.");
+  // === Gender Role Command ===
+  if (message.channel.id === CHANNELS.COMMAND && content === '/genderroles') {
+    const channel = message.guild.channels.cache.get(CHANNELS.TARGET);
+    if (!channel) return message.reply("⚠️ Target channel not found.");
 
     const embed = new EmbedBuilder()
       .setColor('#F507FA')
-      .setTitle('Your gender')
-      .setDescription('You can choose only male or female option from this role picker')
+      .setTitle('Your Gender')
+      .setDescription('Select your gender from the options below. Only one can be active.')
       .setThumbnail('https://i.postimg.cc/YSnZ70Dy/20250428-191755.png');
 
-    const maleButton = new ButtonBuilder()
-      .setCustomId('gender_male')
-      .setLabel('🧔𝐌𝐀𝐋𝐄')
-      .setStyle(ButtonStyle.Primary);
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('gender_male').setLabel('🧔 MALE').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('gender_female').setLabel('👩 FEMALE').setStyle(ButtonStyle.Danger)
+    );
 
-    const femaleButton = new ButtonBuilder()
-      .setCustomId('gender_female')
-      .setLabel('👩𝐅𝐄𝐌𝐀𝐋𝐄')
-      .setStyle(ButtonStyle.Danger);
-
-    const row = new ActionRowBuilder().addComponents(maleButton, femaleButton);
-
-    await targetChannel.send({ embeds: [embed], components: [row] });
-    await message.reply('Role selector has been posted in the gender roles channel!');
-    return;
+    await channel.send({ embeds: [embed], components: [row] });
+    return message.reply('✅ Gender role selector posted!');
   }
 
-  // Bad word detection when mentioning specific users
+  // === Age Role Command ===
+  if (message.channel.id === CHANNELS.COMMAND && content === '/ageroles') {
+    const channel = message.guild.channels.cache.get(CHANNELS.TARGET);
+    if (!channel) return message.reply("⚠️ Target channel not found.");
+
+    const embed = new EmbedBuilder()
+      .setColor('#5865F2')
+      .setTitle('Your Age Group')
+      .setDescription('Pick your age category to get the appropriate role.')
+      .setThumbnail('https://i.postimg.cc/SKXzTNQ6/age-thumbnail.png');
+
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('age_teen').setLabel('🧒 TEEN').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('age_adult').setLabel('🧑 ADULT').setStyle(ButtonStyle.Success)
+    );
+
+    await channel.send({ embeds: [embed], components: [row] });
+    return message.reply('✅ Age role selector posted!');
+  }
+
+  // === Bad Word Filter on Specific Mentions ===
   const mentionedIDs = Array.from(message.mentions.users.keys());
   const hasBadWord = badWords.some(word => content.includes(word));
-  const mentionsEither = mentionedIDs.includes(specificUser1) || mentionedIDs.includes(specificUser2);
+  const isFlaggedMention = mentionedIDs.some(id => flaggedUsers.includes(id));
 
-  if (hasBadWord && mentionsEither) {
-    return message.reply('Wanna fight ?, then i will use my leg to kick your ass🥱');
+  if (hasBadWord && isFlaggedMention) {
+    return message.reply('Wanna fight? Then I’ll use my leg to kick your ass 🥱');
   }
 
-  // Fun responses
-  if (content === 'hey crimzy') {
-    return message.reply('Heheeeyy there, im CRIMZYYYY!');
-  } else if (content === 'bye') {
-    return message.reply('Go away, and dont back again😂');
-  } else if (content === 'daa myre') {
-    return message.reply('podaa pundachi mone👊');
-  }
+  // === Fun Replies ===
+  if (content === 'hey crimzy') return message.reply('Heheeeyy there, I’m CRIMZYYYY!');
+  if (content === 'bye') return message.reply('Go away, and don’t come back again 😂');
+  if (content === 'daa myre') return message.reply('Podaa pundachi mone 👊');
 
-  // Clear messages command (only bot owner)
+  // === Owner-only Clear Command ===
   if (content.startsWith('clear')) {
-    const ownerId = '1354501822429265921';
-    if (message.author.id !== ownerId) {
-      return message.reply("Only the bot owner can use this command.");
-    }
+    if (message.author.id !== OWNER_ID) return message.reply("⛔ Only the bot owner can use this command.");
 
     const user = message.mentions.users.first();
-    if (!user) {
-      return message.reply('Please mention a user to delete their messages.');
-    }
+    if (!user) return message.reply('Please mention a user to clear their messages.');
 
     try {
       const messages = await message.channel.messages.fetch({ limit: 100 });
       const userMessages = messages.filter(msg => msg.author.id === user.id);
       const deleted = await message.channel.bulkDelete(userMessages, true);
-      message.reply(`Deleted ${deleted.size} messages from ${user.tag}`);
+      message.reply(`✅ Cleared ${deleted.size} messages from ${user.tag}`);
     } catch (err) {
       console.error(err);
-      message.reply('Failed to delete messages. Messages older than 14 days cannot be deleted.');
+      message.reply('⚠️ Failed to delete messages. Messages older than 14 days can’t be deleted.');
     }
   }
 });
 
-// Button interaction handler for gender role assignment
+// Interaction Handler for Buttons
 client.on('interactionCreate', async (interaction) => {
   if (!interaction.isButton()) return;
 
+  const { customId, member, guild } = interaction;
+
+  const roles = {
+    male: guild.roles.cache.get(ROLES.MALE),
+    female: guild.roles.cache.get(ROLES.FEMALE),
+    teen: guild.roles.cache.get(ROLES.TEEN),
+    adult: guild.roles.cache.get(ROLES.ADULT)
+  };
+
   try {
-    const member = interaction.member;
-    const maleRole = interaction.guild.roles.cache.get(MALE_ROLE_ID);
-    const femaleRole = interaction.guild.roles.cache.get(FEMALE_ROLE_ID);
+    switch (customId) {
+      case 'gender_male':
+        await member.roles.remove(roles.female).catch(() => {});
+        if (!member.roles.cache.has(roles.male.id)) await member.roles.add(roles.male);
+        await interaction.reply({ content: '✅ You’ve been assigned the **Male** role.', ephemeral: true });
+        break;
 
-    if (!maleRole || !femaleRole) {
-      return interaction.reply({ content: 'Role(s) not found.', ephemeral: true });
-    }
+      case 'gender_female':
+        await member.roles.remove(roles.male).catch(() => {});
+        if (!member.roles.cache.has(roles.female.id)) await member.roles.add(roles.female);
+        await interaction.reply({ content: '✅ You’ve been assigned the **Female** role.', ephemeral: true });
+        break;
 
-    if (interaction.customId === 'gender_male') {
-      await member.roles.remove(femaleRole).catch(() => {});
-      if (!member.roles.cache.has(maleRole.id)) {
-        await member.roles.add(maleRole);
-      }
-      await interaction.reply({ content: 'You got the Male role!', ephemeral: true });
-    } else if (interaction.customId === 'gender_female') {
-      await member.roles.remove(maleRole).catch(() => {});
-      if (!member.roles.cache.has(femaleRole.id)) {
-        await member.roles.add(femaleRole);
-      }
-      await interaction.reply({ content: 'You got the Female role!', ephemeral: true });
+      case 'age_teen':
+        await member.roles.remove(roles.adult).catch(() => {});
+        if (!member.roles.cache.has(roles.teen.id)) await member.roles.add(roles.teen);
+        await interaction.reply({ content: '✅ You’ve been assigned the **Teen** role.', ephemeral: true });
+        break;
+
+      case 'age_adult':
+        await member.roles.remove(roles.teen).catch(() => {});
+        if (!member.roles.cache.has(roles.adult.id)) await member.roles.add(roles.adult);
+        await interaction.reply({ content: '✅ You’ve been assigned the **Adult** role.', ephemeral: true });
+        break;
     }
   } catch (error) {
-    console.error('Interaction error:', error);
+    console.error('❌ Interaction error:', error);
     if (!interaction.replied) {
-      await interaction.reply({ content: 'Something went wrong.', ephemeral: true });
+      await interaction.reply({ content: 'Something went wrong while assigning the role.', ephemeral: true });
     }
   }
 });
 
-// Log in the Discord client
 client.login(process.env.TOKEN);
