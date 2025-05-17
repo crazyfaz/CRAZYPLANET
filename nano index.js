@@ -1,81 +1,86 @@
 require('dotenv').config();
-const express = require('express');
-const {
-  Client,
-  GatewayIntentBits,
-  EmbedBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-  ActionRowBuilder,
-  REST,
-  Routes,
-  SlashCommandBuilder
-} = require('discord.js');
+const { Client, GatewayIntentBits } = require('discord.js');
+const axios = require('axios');
 
-// === Setup Express Keep-Alive Server ===
-const app = express();
-const PORT = process.env.PORT || 3000;
-app.get('/', (req, res) => res.send('Bot is running!'));
-app.listen(PORT, () => console.log(`✅ Keep-alive server started on port ${PORT}`));
-
-// === Load Owner ID Early ===
-const OWNER_ID = process.env.OWNER_ID;
-
-// === Setup Discord Client ===
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildMembers
-  ]
+  ],
 });
 
-// === Message Commands & Filters ===
-const badWords = [
-  'fuck', 'idiot', 'stupid', 'dumb', 'bitch', 'asshole', 'phuck', 'fck', 'nigga', 'niggha',
-  'stfu', 'shut the fuck up', 'stfub', 'shut the fuck up bitch', 'lawde', 'myre'
-];
-const flaggedUsers = ['1372278464543068170', OWNER_ID];
+const CHANNEL_ID = '1372966958139576340'; // Your channel ID
+let currentMood = 'default';
+
+// Allowed moods
+const validMoods = ['default', 'funny', 'gangster', 'soft'];
+
+client.once('ready', () => {
+  console.log(`${client.user.tag} is now online!`);
+});
 
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
+  if (message.channel.id !== CHANNEL_ID) return;
 
-  const content = message.content.toLowerCase();
-
-  // Bad word filter on flagged mentions
-  const mentionedIDs = Array.from(message.mentions.users.keys());
-  const hasBadWord = badWords.some(word => content.includes(word));
-  const isFlaggedMention = mentionedIDs.some(id => flaggedUsers.includes(id));
-  if (hasBadWord && isFlaggedMention) {
-    return message.reply('Wanna fight? Then I’ll use my leg to kick your ass 🥱');
-  }
-
-  // Fun Replies
-  if (content === 'hey crimzy') return message.reply('Heheeeyy there, I’m CRIMZYYYY!');
-  if (content === 'bye') return message.reply('Go away, and don’t come back again 😂');
-  if (content === 'daa myre') return message.reply('Podaa pundachi mone 👊');
-
-  // Owner-only clear command
-  if (content.startsWith('clear')) {
-    if (message.author.id !== OWNER_ID) return message.reply("⛔ Only the bot owner can use this command.");
-    const user = message.mentions.users.first();
-    if (!user) return message.reply('Please mention a user to clear their messages.');
-
-    try {
-      const messages = await message.channel.messages.fetch({ limit: 100 });
-      const userMessages = messages.filter(msg => msg.author.id === user.id);
-      const deleted = await message.channel.bulkDelete(userMessages, true);
-      message.reply(`✅ Cleared ${deleted.size} messages from ${user.tag}`);
-    } catch (err) {
-      console.error(err);
-      message.reply('⚠️ Failed to delete messages. Messages older than 14 days can’t be deleted.');
+  // Mood switch command
+  if (message.content.startsWith('!mood ')) {
+    const newMood = message.content.split(' ')[1].toLowerCase();
+    if (validMoods.includes(newMood)) {
+      currentMood = newMood;
+      return message.reply(`Mood switched to **${newMood}**!`);
+    } else {
+      return message.reply(`Invalid mood. Try: ${validMoods.join(', ')}`);
     }
   }
-});
 
-client.once('ready', () => {
-  console.log(`✅ Bot is live as ${client.user.tag}`);
+  try {
+    const response = await axios.post(
+      'https://openrouter.ai/api/v1/chat/completions',
+      {
+        model: 'openai/gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content: `You are CRIMZYY, a Discord bot with a ${currentMood} personality. 
+                      Your default memory: Your name is CRIMZYY, you come from the digital world, 
+                      your creator is YourName, and your ex-girlfriend's name is Alice. 
+                      Respond naturally and fully in that mood. Keep replies short and concise, no extra fixed greetings.`,
+          },
+          {
+            role: 'user',
+            content: message.content,
+          },
+        ],
+        max_tokens: 200,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    const reply = response.data.choices?.[0]?.message?.content;
+    if (!reply) throw new Error('No content in response');
+
+    await message.reply(reply);
+  } catch (error) {
+    // Handle credits/token limits or other API errors
+    if (
+      error.response?.data?.error?.code === 402 &&
+      error.response?.data?.error?.message.includes('credits')
+    ) {
+      await message.reply(
+        'Sorry, I am out of credits right now and cannot respond. Please try again later.'
+      );
+    } else {
+      console.error('Error generating response:', error.response?.data || error.message);
+      await message.reply('Sorry, I had a brain freeze. Try again!');
+    }
+  }
 });
 
 client.login(process.env.TOKEN);
