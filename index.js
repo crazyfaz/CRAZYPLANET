@@ -3,7 +3,9 @@ const { Client, GatewayIntentBits } = require('discord.js');
 const axios = require('axios');
 const express = require('express');
 
-console.log("OPENROUTER_API_KEY present?", !!process.env.OPENROUTER_API_KEY);
+// Debug: Print key status
+console.log("OPENROUTER_API_KEY:", process.env.OPENROUTER_API_KEY ? 'Loaded' : 'Missing');
+console.log("TOKEN:", process.env.TOKEN ? 'Loaded' : 'Missing');
 
 const client = new Client({
   intents: [
@@ -13,10 +15,8 @@ const client = new Client({
   ],
 });
 
-const CHANNEL_ID = '1372966958139576340'; // Your channel ID
+const CHANNEL_ID = '1372966958139576340';
 let currentMood = 'default';
-
-// Allowed moods
 const validMoods = ['default', 'funny', 'gangster', 'soft'];
 
 client.once('ready', () => {
@@ -24,12 +24,10 @@ client.once('ready', () => {
 });
 
 client.on('messageCreate', async (message) => {
-  if (message.author.bot) return;
-  if (message.channel.id !== CHANNEL_ID) return;
+  if (message.author.bot || message.channel.id !== CHANNEL_ID) return;
 
-  // Mood switch command
   if (message.content.startsWith('!mood ')) {
-    const newMood = message.content.split(' ')[1].toLowerCase();
+    const newMood = message.content.split(' ')[1]?.toLowerCase();
     if (validMoods.includes(newMood)) {
       currentMood = newMood;
       return message.reply(`Mood switched to **${newMood}**!`);
@@ -49,7 +47,7 @@ client.on('messageCreate', async (message) => {
             content: `You are CRIMZYY, a Discord bot with a ${currentMood} personality. 
                       Your default memory: Your name is CRIMZYY, you come from the digital world, 
                       your creator is YourName, and your ex-girlfriend's name is Alice. 
-                      Respond naturally and fully in that mood. Keep replies short and concise, no extra fixed greetings.`,
+                      Respond naturally and fully in that mood. Keep replies short and concise.`,
           },
           {
             role: 'user',
@@ -68,27 +66,25 @@ client.on('messageCreate', async (message) => {
 
     const reply = response.data.choices?.[0]?.message?.content;
     if (!reply) throw new Error('No content in response');
-
     await message.reply(reply);
+
   } catch (error) {
-    if (
-      error.response?.data?.error?.code === 402 &&
-      error.response?.data?.error?.message.includes('credits')
-    ) {
-      await message.reply(
-        'Sorry, I am out of credits right now and cannot respond. Please try again later.'
-      );
+    const apiError = error.response?.data?.error;
+    console.error('Error generating response:', apiError || error.message);
+
+    if (apiError?.code === 402 && apiError?.message.includes('credits')) {
+      await message.reply('Sorry, I am out of credits right now. Try again later.');
     } else {
-      console.error('Error generating response:', error.response?.data || error.message);
       await message.reply('Sorry, I had a brain freeze. Try again!');
     }
   }
 });
 
-client.login(process.env.TOKEN);
-
-// Express server for Render port detection
+// Express server for Render
 const app = express();
 const PORT = process.env.PORT || 3000;
 app.get('/', (req, res) => res.send('Bot is running'));
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`Web server on port ${PORT}`));
+
+// Start Discord bot
+client.login(process.env.TOKEN);
