@@ -1,6 +1,9 @@
 require('dotenv').config();
 const { Client, GatewayIntentBits } = require('discord.js');
 const axios = require('axios');
+const express = require('express');
+
+console.log("OPENROUTER_API_KEY present?", !!process.env.OPENROUTER_API_KEY);
 
 const client = new Client({
   intents: [
@@ -68,7 +71,6 @@ client.on('messageCreate', async (message) => {
 
     await message.reply(reply);
   } catch (error) {
-    // Handle credits/token limits or other API errors
     if (
       error.response?.data?.error?.code === 402 &&
       error.response?.data?.error?.message.includes('credits')
@@ -84,3 +86,9 @@ client.on('messageCreate', async (message) => {
 });
 
 client.login(process.env.TOKEN);
+
+// Express server for Render port detection
+const app = express();
+const PORT = process.env.PORT || 3000;
+app.get('/', (req, res) => res.send('Bot is running'));
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
