@@ -5,24 +5,10 @@ const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const db = new sqlite3.Database('./drake_memory.db');
 
-// Create DB tables
-db.run(`CREATE TABLE IF NOT EXISTS facts (
-  subject TEXT,
-  key TEXT,
-  value TEXT
-)`);
-db.run(`CREATE TABLE IF NOT EXISTS memories (
-  user_id TEXT,
-  message TEXT,
-  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-)`);
-db.run(`CREATE TABLE IF NOT EXISTS user_profiles (
-  user_id TEXT PRIMARY KEY,
-  nickname TEXT,
-  description TEXT
-)`);
+db.run(`CREATE TABLE IF NOT EXISTS facts (subject TEXT, key TEXT, value TEXT)`);
+db.run(`CREATE TABLE IF NOT EXISTS memories (user_id TEXT, message TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)`);
+db.run(`CREATE TABLE IF NOT EXISTS user_profiles (user_id TEXT PRIMARY KEY, nickname TEXT, description TEXT)`);
 
-// Bot setup
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -31,7 +17,7 @@ const client = new Client({
   ],
 });
 
-// DB utility
+// Helper Functions
 function runQuery(sql, params = []) {
   return new Promise((resolve, reject) => {
     db.run(sql, params, function (err) {
@@ -76,7 +62,6 @@ function getUserProfile(userId) {
   });
 }
 
-// Set CRAZY profile
 async function upsertCrazyProfile(userId) {
   await runQuery(
     `INSERT OR REPLACE INTO user_profiles (user_id, nickname, description) VALUES (?, ?, ?)`,
@@ -94,42 +79,53 @@ const validMoods = ['gangster', 'funny', 'chill', 'legendary', 'brave man'];
 client.once('ready', async () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
 
-  const myUserId = 'YOUR_DISCORD_USER_ID_HERE'; // <-- Replace this
+  const myUserId = 'YOUR_DISCORD_USER_ID_HERE'; // <<== REPLACE THIS
   await upsertCrazyProfile(myUserId);
 
-  // Delete old slash commands and add /delete
-  const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
-  try {
-    const commands = await rest.get(Routes.applicationCommands(client.user.id));
-    for (const cmd of commands) {
-      await rest.delete(`${Routes.applicationCommands(client.user.id)}/${cmd.id}`);
-      console.log(`Deleted command: ${cmd.name}`);
-    }
-
-    const deleteCommand = new SlashCommandBuilder()
+  const commands = [
+    new SlashCommandBuilder()
       .setName('delete')
-      .setDescription('Delete messages from a user')
+      .setDescription('Delete last 10 messages from a user')
       .addUserOption(option =>
         option.setName('target').setDescription('User to delete messages from').setRequired(true)
-      );
+      )
+      .toJSON()
+  ];
 
-    await rest.put(Routes.applicationCommands(client.user.id), {
-      body: [deleteCommand.toJSON()],
-    });
-
-    console.log('Slash command /delete registered.');
+  const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
+  try {
+    const appId = client.application.id;
+    await rest.put(Routes.applicationCommands(appId), { body: commands });
+    console.log('✅ Slash command (/delete) registered.');
   } catch (err) {
-    console.error('Slash command setup failed:', err);
+    console.error('Slash command error:', err);
   }
 });
 
-// Message handler
-client.on('messageCreate', handleMessage);
-async function handleMessage(message) {
+client.on('interactionCreate', async interaction => {
+  if (!interaction.isChatInputCommand()) return;
+
+  if (interaction.commandName === 'delete') {
+    const target = interaction.options.getUser('target');
+    const channel = interaction.channel;
+
+    const messages = await channel.messages.fetch({ limit: 50 });
+    const userMessages = messages.filter(m => m.author.id === target.id).first(10);
+
+    for (const msg of userMessages) {
+      await msg.delete().catch(console.error);
+    }
+
+    await interaction.reply({ content: `Deleted ${userMessages.length} messages from ${target.username}`, ephemeral: true });
+  }
+});
+
+client.on('messageCreate', async message => {
   if (message.author.bot) return;
 
   const isMoodCommand = message.content.startsWith('!mood ');
   const botWasMentioned = message.mentions.has(client.user);
+
   if (!isMoodCommand && !botWasMentioned) return;
 
   if (isMoodCommand) {
@@ -154,6 +150,24 @@ async function handleMessage(message) {
   const previousMemory = await getUserMemory(message.author.id);
   const subjectFacts = await getFactsAbout("shenji");
   const userProfile = await getUserProfile(message.author.id);
+  const profileText = userProfile ? `User nickname: ${userProfile.nickname}\nDescription: ${userProfile.description}` : '';
+
+  const bulletEchoKnowledge = `
+Bullet Echo is a tactical top-down multiplayer shooter with stealth, teamwork, and special modes.
+Bullet Echo India features regional events and themed rewards.
+`;
+
+  const shenjiFacts = `
+Shenji is my son, born from fire itself.
+He wielded flames before he could walk.
+As a child, he turned toy guns into infernos.
+He forged his own fire-shotgun by age 7.
+Now, he's feared as the Fire Lord of Bullet Echo.
+`;
+
+  const crazyCatchphrase = (userProfile && userProfile.nickname === 'CRAZY')
+    ? '\nRemember: You might have been killed by CRAZY at least 1000 times! 😂'
+    : '';
 
 require('dotenv').config();
 const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder } = require('discord.js');
@@ -162,24 +176,10 @@ const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const db = new sqlite3.Database('./drake_memory.db');
 
-// Create DB tables
-db.run(`CREATE TABLE IF NOT EXISTS facts (
-  subject TEXT,
-  key TEXT,
-  value TEXT
-)`);
-db.run(`CREATE TABLE IF NOT EXISTS memories (
-  user_id TEXT,
-  message TEXT,
-  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-)`);
-db.run(`CREATE TABLE IF NOT EXISTS user_profiles (
-  user_id TEXT PRIMARY KEY,
-  nickname TEXT,
-  description TEXT
-)`);
+db.run(`CREATE TABLE IF NOT EXISTS facts (subject TEXT, key TEXT, value TEXT)`);
+db.run(`CREATE TABLE IF NOT EXISTS memories (user_id TEXT, message TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)`);
+db.run(`CREATE TABLE IF NOT EXISTS user_profiles (user_id TEXT PRIMARY KEY, nickname TEXT, description TEXT)`);
 
-// Bot setup
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -188,7 +188,7 @@ const client = new Client({
   ],
 });
 
-// DB utility
+// Helper Functions
 function runQuery(sql, params = []) {
   return new Promise((resolve, reject) => {
     db.run(sql, params, function (err) {
@@ -233,7 +233,6 @@ function getUserProfile(userId) {
   });
 }
 
-// Set CRAZY profile
 async function upsertCrazyProfile(userId) {
   await runQuery(
     `INSERT OR REPLACE INTO user_profiles (user_id, nickname, description) VALUES (?, ?, ?)`,
@@ -251,42 +250,53 @@ const validMoods = ['gangster', 'funny', 'chill', 'legendary', 'brave man'];
 client.once('ready', async () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
 
-  const myUserId = 'YOUR_DISCORD_USER_ID_HERE'; // <-- Replace this
+  const myUserId = 'YOUR_DISCORD_USER_ID_HERE'; // <<== REPLACE THIS
   await upsertCrazyProfile(myUserId);
 
-  // Delete old slash commands and add /delete
-  const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
-  try {
-    const commands = await rest.get(Routes.applicationCommands(client.user.id));
-    for (const cmd of commands) {
-      await rest.delete(`${Routes.applicationCommands(client.user.id)}/${cmd.id}`);
-      console.log(`Deleted command: ${cmd.name}`);
-    }
-
-    const deleteCommand = new SlashCommandBuilder()
+  const commands = [
+    new SlashCommandBuilder()
       .setName('delete')
-      .setDescription('Delete messages from a user')
+      .setDescription('Delete last 10 messages from a user')
       .addUserOption(option =>
         option.setName('target').setDescription('User to delete messages from').setRequired(true)
-      );
+      )
+      .toJSON()
+  ];
 
-    await rest.put(Routes.applicationCommands(client.user.id), {
-      body: [deleteCommand.toJSON()],
-    });
-
-    console.log('Slash command /delete registered.');
+  const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
+  try {
+    const appId = client.application.id;
+    await rest.put(Routes.applicationCommands(appId), { body: commands });
+    console.log('✅ Slash command (/delete) registered.');
   } catch (err) {
-    console.error('Slash command setup failed:', err);
+    console.error('Slash command error:', err);
   }
 });
 
-// Message handler
-client.on('messageCreate', handleMessage);
-async function handleMessage(message) {
+client.on('interactionCreate', async interaction => {
+  if (!interaction.isChatInputCommand()) return;
+
+  if (interaction.commandName === 'delete') {
+    const target = interaction.options.getUser('target');
+    const channel = interaction.channel;
+
+    const messages = await channel.messages.fetch({ limit: 50 });
+    const userMessages = messages.filter(m => m.author.id === target.id).first(10);
+
+    for (const msg of userMessages) {
+      await msg.delete().catch(console.error);
+    }
+
+    await interaction.reply({ content: `Deleted ${userMessages.length} messages from ${target.username}`, ephemeral: true });
+  }
+});
+
+client.on('messageCreate', async message => {
   if (message.author.bot) return;
 
   const isMoodCommand = message.content.startsWith('!mood ');
   const botWasMentioned = message.mentions.has(client.user);
+
   if (!isMoodCommand && !botWasMentioned) return;
 
   if (isMoodCommand) {
@@ -311,24 +321,60 @@ async function handleMessage(message) {
   const previousMemory = await getUserMemory(message.author.id);
   const subjectFacts = await getFactsAbout("shenji");
   const userProfile = await getUserProfile(message.author.id);
+  const profileText = userProfile ? `User nickname: ${userProfile.nickname}\nDescription: ${userProfile.description}` : '';
 
-  const profileText = userProfile
-    ? `User nickname: ${userProfile.nickname}\nDescription: ${userProfile.description}`
-    : '';
+  const bulletEchoKnowledge = `
+Bullet Echo is a tactical top-down multiplayer shooter with stealth, teamwork, and special modes.
+Bullet Echo India features regional events and themed rewards.
+`;
+
+  const shenjiFacts = `
+Shenji is my son, born from fire itself.
+He wielded flames before he could walk.
+As a child, he turned toy guns into infernos.
+He forged his own fire-shotgun by age 7.
+Now, he's feared as the Fire Lord of Bullet Echo.
+`;
 
   const crazyCatchphrase = (userProfile && userProfile.nickname === 'CRAZY')
     ? '\nRemember: You might have been killed by CRAZY at least 1000 times! 😂'
     : '';
 
-  const bulletEchoKnowledge = `Bullet Echo is a tactical top-down multiplayer shooter.`;
-  const shenjiFacts = `Shenji is my son, born from fire. He forged his own fire-shotgun by age 7. Now, he's the Fire Lord.`;
-
   const systemPrompts = {
-    gangster: `You are DRAKE, gangster Discord bot. Max 2 lines. ${profileText}${crazyCatchphrase}\nFacts: ${subjectFacts}\n${previousMemory}\n${bulletEchoKnowledge}\n${shenjiFacts}`,
-    funny: `You are DRAKE, funny Discord bot. Max 2 lines. ${profileText}${crazyCatchphrase}\nFacts: ${subjectFacts}\n${previousMemory}\n${bulletEchoKnowledge}\n${shenjiFacts}`,
-    chill: `You are DRAKE, chill bot. Max 2 lines. ${profileText}${crazyCatchphrase}\nFacts: ${subjectFacts}\n${previousMemory}\n${bulletEchoKnowledge}\n${shenjiFacts}`,
-    legendary: `You are DRAKE, legendary fire guardian. Max 2 lines. ${profileText}${crazyCatchphrase}\nFacts: ${subjectFacts}\n${previousMemory}\n${bulletEchoKnowledge}\n${shenjiFacts}`,
-    "brave man": `You are DRAKE, brave and honorable bot. Max 2 lines. ${profileText}${crazyCatchphrase}\nFacts: ${subjectFacts}\n${previousMemory}\n${bulletEchoKnowledge}\n${shenjiFacts}`
+    gangster: `You are DRAKE, a gangster-style Discord bot created by CRAZYFAZ. Talk with swagger. Use cool emojis. Max 2 lines.
+${profileText}${crazyCatchphrase}
+Facts: ${subjectFacts}
+Memory: ${previousMemory}
+${bulletEchoKnowledge}
+${shenjiFacts}`,
+
+    funny: `You are DRAKE, a funny Discord bot. Respect CRAZYFAZ. Use funny emojis. Max 2 lines.
+${profileText}${crazyCatchphrase}
+Facts: ${subjectFacts}
+Memory: ${previousMemory}
+${bulletEchoKnowledge}
+${shenjiFacts}`,
+
+    chill: `You are DRAKE, a chill and calm bot. Use some chill emojis. Max 2 lines.
+${profileText}${crazyCatchphrase}
+Facts: ${subjectFacts}
+Memory: ${previousMemory}
+${bulletEchoKnowledge}
+${shenjiFacts}`,
+
+    legendary: `You are DRAKE, the legendary fire guardian and father of Shenji. Max 2 lines.
+${profileText}${crazyCatchphrase}
+Facts: ${subjectFacts}
+Memory: ${previousMemory}
+${bulletEchoKnowledge}
+${shenjiFacts}`,
+
+    "brave man": `You are DRAKE, a battlefield hero and Shenji's proud father. Keep it brave. Max 2 lines.
+${profileText}${crazyCatchphrase}
+Facts: ${subjectFacts}
+Memory: ${previousMemory}
+${bulletEchoKnowledge}
+${shenjiFacts}`
   };
 
   try {
@@ -356,38 +402,20 @@ async function handleMessage(message) {
     await message.reply(reply);
   } catch (error) {
     console.error('OpenRouter error:', error?.response?.data || error.message);
-    await message.reply('Something went wrong. Try again!');
-  }
-}
-
-// Handle /delete slash command
-client.on('interactionCreate', async interaction => {
-  if (!interaction.isChatInputCommand()) return;
-  if (interaction.commandName === 'delete') {
-    const user = interaction.options.getUser('target');
-    const channel = interaction.channel;
-
-    try {
-      const messages = await channel.messages.fetch({ limit: 100 });
-      const toDelete = messages.filter(m => m.author.id === user.id).first(10);
-
-      for (const msg of toDelete) {
-        await msg.delete();
-      }
-
-      await interaction.reply({ content: `Deleted ${toDelete.length} messages from ${user.tag}`, ephemeral: true });
-    } catch (err) {
-      console.error(err);
-      await interaction.reply({ content: 'Failed to delete messages.', ephemeral: true });
+    const apiError = error.response?.data?.error;
+    if (apiError?.code === 401) {
+      await message.reply('Missing API key (401).');
+    } else if (apiError?.code === 402) {
+      await message.reply('Out of credits. Please recharge.');
+    } else {
+      await message.reply('Something went wrong. Try again!');
     }
   }
 });
 
-// Express for uptime
 const expressApp = express();
 const PORT = process.env.PORT || 3000;
 expressApp.get('/', (req, res) => res.send('DRAKE is running!'));
 expressApp.listen(PORT, () => console.log(`Web server live at port ${PORT}`));
 
-// Login bot
 client.login(process.env.TOKEN);
