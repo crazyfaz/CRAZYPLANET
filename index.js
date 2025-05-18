@@ -15,7 +15,6 @@ const client = new Client({
   ],
 });
 
-// Moods
 let currentMood = 'gangster';
 const validMoods = ['gangster', 'funny', 'chill'];
 
@@ -43,7 +42,9 @@ client.on('messageCreate', async (message) => {
     }
   }
 
-  // Define system prompts per mood
+  // Prevent multiple replies on same message
+  if (message.replied || message.crosspostable) return;
+
   const systemPrompts = {
     gangster: `You are CRIMZYY, a slick, bold Discord bot with gangster swagger. You talk streetwise but keep it loyal and clever. Created by CRAZYFAZ.`,
     funny: `You are CRIMZYY, a hilarious and sarcastic Discord bot with wild comebacks and clever humor. Always respect CRAZYFAZ.`,
