@@ -2,6 +2,15 @@ require('dotenv').config();
 const { Client, GatewayIntentBits } = require('discord.js');
 const axios = require('axios');
 const express = require('express');
+const sqlite3 = require('sqlite3').verbose();
+const db = new sqlite3.Database('./drake_memory.db');
+
+// Setup DB for long-term memory
+db.run(`CREATE TABLE IF NOT EXISTS facts (
+  subject TEXT,
+  key TEXT,
+  value TEXT
+)`);
 
 console.log("Environment:", process.env.NODE_ENV || 'development');
 console.log("OPENROUTER_API_KEY:", process.env.OPENROUTER_API_KEY ? 'Loaded' : 'Missing');
@@ -20,10 +29,17 @@ const validMoods = ['gangster', 'funny', 'chill'];
 
 client.once('ready', () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
-
-  // Attach only once after bot is ready
   client.on('messageCreate', handleMessage);
 });
+
+async function getFactsAbout(subject) {
+  return new Promise((resolve, reject) => {
+    db.all(`SELECT key, value FROM facts WHERE subject = ?`, [subject], (err, rows) => {
+      if (err) reject(err);
+      else resolve(rows.map(r => `${r.key}: ${r.value}`).join('\n'));
+    });
+  });
+}
 
 async function handleMessage(message) {
   if (message.author.bot) return;
@@ -33,7 +49,66 @@ async function handleMessage(message) {
 
   if (!isMoodCommand && !botWasMentioned) return;
 
-  // Mood switching logic
+  if (isMoodCommand) {
+    const newMood = message.content.slice(6).trim().toLowerCase();
+    if (validMoods.includes(newMood)) {
+      currentMood = newMood;
+      return message.reply(`Mood switched to **${newMood}**.`);
+    } else {
+      return message.reply(`Invalid mood! Try one of: ${validMoods.join(', ')}`);
+    }
+  }
+require('dotenv').config();
+const { Client, GatewayIntentBits } = require('discord.js');
+const axios = require('axios');
+const express = require('express');
+const sqlite3 = require('sqlite3').verbose();
+const db = new sqlite3.Database('./drake_memory.db');
+
+// Setup DB for long-term memory
+db.run(`CREATE TABLE IF NOT EXISTS facts (
+  subject TEXT,
+  key TEXT,
+  value TEXT
+)`);
+
+console.log("Environment:", process.env.NODE_ENV || 'development');
+console.log("OPENROUTER_API_KEY:", process.env.OPENROUTER_API_KEY ? 'Loaded' : 'Missing');
+console.log("TOKEN:", process.env.TOKEN ? 'Loaded' : 'Missing');
+
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+  ],
+});
+
+let currentMood = 'gangster';
+const validMoods = ['gangster', 'funny', 'chill'];
+
+client.once('ready', () => {
+  console.log(`✅ Logged in as ${client.user.tag}`);
+  client.on('messageCreate', handleMessage);
+});
+
+async function getFactsAbout(subject) {
+  return new Promise((resolve, reject) => {
+    db.all(`SELECT key, value FROM facts WHERE subject = ?`, [subject], (err, rows) => {
+      if (err) reject(err);
+      else resolve(rows.map(r => `${r.key}: ${r.value}`).join('\n'));
+    });
+  });
+}
+
+async function handleMessage(message) {
+  if (message.author.bot) return;
+
+  const isMoodCommand = message.content.startsWith('!mood ');
+  const botWasMentioned = message.mentions.has(client.user);
+
+  if (!isMoodCommand && !botWasMentioned) return;
+
   if (isMoodCommand) {
     const newMood = message.content.slice(6).trim().toLowerCase();
     if (validMoods.includes(newMood)) {
@@ -44,7 +119,14 @@ async function handleMessage(message) {
     }
   }
 
-  // Remove mention from message
+  // Learn new facts if format is "<subject> is the <value>"
+  const learnMatch = message.content.match(/^(.+) is the (.+)$/i);
+  if (learnMatch) {
+    const subject = learnMatch[1].trim();
+    const value = learnMatch[2].trim();
+    db.run(`INSERT INTO facts (subject, key, value) VALUES (?, ?, ?)`, [subject, 'title', value]);
+  }
+
   const userMessage = message.content.replace(/<@!?[0-9]+>/g, '').trim();
 
   const bulletEchoKnowledge = `
@@ -52,28 +134,23 @@ Bullet Echo is a tactical top-down multiplayer shooter with a focus on stealth, 
 Bullet Echo India is the Indian localized version with special events, Indian-themed content, and exclusive rewards.
 `;
 
-  const shenjiLore = `
-Shenji is my son. I raised him in fire since childhood. Taught him to master it.
-He became Fire Lord. His shotgun spits flame and fear.
-He was once a quiet kid — now a burning legend.
-Ask me about him if you dare.
-`;
+  const shenjiFacts = await getFactsAbout("Shenji");
 
   const systemPrompts = {
     gangster: `You are DRAKE, a slick, bold Discord bot with gangster swagger. You talk streetwise but keep it loyal and clever. Created by CRAZYFAZ.
 Knowledge about Bullet Echo, Bullet Echo India, and Shenji:
 ${bulletEchoKnowledge}
-${shenjiLore}
+${shenjiFacts}
 Keep replies short and a maximum of 2 lines.`,
     funny: `You are DRAKE, a hilarious and sarcastic Discord bot with wild comebacks and clever humor. Always respect CRAZYFAZ.
 Knowledge about Bullet Echo, Bullet Echo India, and Shenji:
 ${bulletEchoKnowledge}
-${shenjiLore}
+${shenjiFacts}
 Keep replies short and a maximum of 2 lines.`,
     chill: `You are DRAKE, a laid-back, cool Discord bot who speaks calmly and wisely. You vibe with the crew and respect your creator CRAZYFAZ.
 Knowledge about Bullet Echo, Bullet Echo India, and Shenji:
 ${bulletEchoKnowledge}
-${shenjiLore}
+${shenjiFacts}
 Keep replies short and a maximum of 2 lines.`,
   };
 
@@ -114,11 +191,60 @@ Keep replies short and a maximum of 2 lines.`,
   }
 }
 
-// Keep-alive web server for uptime
 const expressApp = express();
 const PORT = process.env.PORT || 3000;
 expressApp.get('/', (req, res) => res.send('DRAKE is running!'));
 expressApp.listen(PORT, () => console.log(`Web server live at port ${PORT}`));
 
-// Start the bot
 client.login(process.env.TOKEN);
+  // Learn new facts if format is "<subject> is the <value>"
+  const learnMatch = message.content.match(/^(.+) is the (.+)$/i);
+  if (learnMatch) {
+    const subject = learnMatch[1].trim();
+    const value = learnMatch[2].trim();
+    db.run(`INSERT INTO facts (subject, key, value) VALUES (?, ?, ?)`, [subject, 'title', value]);
+  }
+
+  const userMessage = message.content.replace(/<@!?[0-9]+>/g, '').trim();
+
+  const bulletEchoKnowledge = `
+Bullet Echo is a tactical top-down multiplayer shooter with a focus on stealth, teamwork, and weapon variety.
+Bullet Echo India is the Indian localized version with special events, Indian-themed content, and exclusive rewards.
+`;
+
+  const shenjiFacts = await getFactsAbout("Shenji");
+
+  const systemPrompts = {
+    gangster: `You are DRAKE, a slick, bold Discord bot with gangster swagger. You talk streetwise but keep it loyal and clever. Created by CRAZYFAZ.
+Knowledge about Bullet Echo, Bullet Echo India, and Shenji:
+${bulletEchoKnowledge}
+${shenjiFacts}
+Keep replies short and a maximum of 2 lines.`,
+    funny: `You are DRAKE, a hilarious and sarcastic Discord bot with wild comebacks and clever humor. Always respect CRAZYFAZ.
+Knowledge about Bullet Echo, Bullet Echo India, and Shenji:
+etEchoKnowledge}
+${shenjiFacts}
+Keep replies short and a maximum of 2 lines.`,
+    chill: `You are DRAKE, a laid-back, cool Discord bot who speaks calmly and wisely. You vibe with the crew and respect your creator CRAZYFAZ.
+Knowledge about Bullet Echo, Bullet Echo India, and Shenji:
+${bulletEchoKnowledge}
+${shenjiFacts}
+Keep replies short and a maximum of 2 lines.`,
+  };
+
+  try {
+    const response = await axios.post(
+      'https://openrouter.ai/api/v1/chat/completions',
+      {
+        model: 'openai/gpt-4o',
+        messages: [
+          { role: 'system', content: systemPrompts[currentMood] },
+          { role: 'user', content: userMessage },
+        ],
+        max_tokens: 200,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
