@@ -1,51 +1,42 @@
 require('dotenv').config();
-const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, Collection } = require('discord.js');
+const { Client, GatewayIntentBits } = require('discord.js');
 const axios = require('axios');
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const db = new sqlite3.Database('./drake_memory.db');
 
-db.run(`CREATE TABLE IF NOT EXISTS facts (subject TEXT, key TEXT, value TEXT)`);
-db.run(`CREATE TABLE IF NOT EXISTS memories (user_id TEXT, message TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)`);
-db.run(`CREATE TABLE IF NOT EXISTS user_profiles (user_id TEXT PRIMARY KEY, nickname TEXT, description TEXT)`);
+db.run(`CREATE TABLE IF NOT EXISTS facts (
+  subject TEXT,
+  key TEXT,
+  value TEXT
+)`);
+
+db.run(`CREATE TABLE IF NOT EXISTS memories (
+  user_id TEXT,
+  message TEXT,
+  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+)`);
+
+db.run(`CREATE TABLE IF NOT EXISTS user_profiles (
+  user_id TEXT PRIMARY KEY,
+  nickname TEXT,
+  description TEXT
+)`);
+
+console.log("Environment:", process.env.NODE_ENV || 'development');
 
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent
+    GatewayIntentBits.MessageContent,
   ],
 });
 
-client.commands = new Collection();
-
-const deleteCommand = new SlashCommandBuilder()
-  .setName('delete')
-  .setDescription('Delete recent messages from a user (max 15)')
-  .addUserOption(option =>
-    option.setName('target')
-      .setDescription('The user whose messages will be deleted')
-      .setRequired(true)
-  );
-
-const commands = [deleteCommand.toJSON()];
-const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
-
-(async () => {
-  try {
-    await rest.put(
-      Routes.applicationCommands(process.env.CLIENT_ID),
-      { body: commands }
-    );
-    console.log('✅ Slash command registered.');
-  } catch (error) {
-    console.error('Error registering slash command:', error);
-  }
-})();
-
-async function runQuery(sql, params = []) {
+// Promisify db.run for async/await usage
+function runQuery(sql, params = []) {
   return new Promise((resolve, reject) => {
-    db.run(sql, params, function (err) {
+    db.run(sql, params, function(err) {
       if (err) reject(err);
       else resolve(this);
     });
@@ -67,10 +58,14 @@ async function saveUserMemory(userId, message) {
 
 async function getUserMemory(userId, limit = 5) {
   return new Promise((resolve, reject) => {
-    db.all(`SELECT message FROM memories WHERE user_id = ? ORDER BY timestamp DESC LIMIT ?`, [userId, limit], (err, rows) => {
-      if (err) reject(err);
-      else resolve(rows.map(row => row.message).reverse().join('\n'));
-    });
+    db.all(
+      `SELECT message FROM memories WHERE user_id = ? ORDER BY timestamp DESC LIMIT ?`,
+      [userId, limit],
+      (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows.map(row => row.message).reverse().join('\n'));
+      }
+    );
   });
 }
 
@@ -83,6 +78,7 @@ function getUserProfile(userId) {
   });
 }
 
+// Insert or update CRAZY profile once (you can do this on startup)
 async function upsertCrazyProfile(userId) {
   await runQuery(
     `INSERT OR REPLACE INTO user_profiles (user_id, nickname, description) VALUES (?, ?, ?)`,
@@ -99,14 +95,20 @@ const validMoods = ['gangster', 'funny', 'chill', 'legendary', 'brave man'];
 
 client.once('ready', async () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
-  await upsertCrazyProfile(process.env.OWNER_ID);
+
+  // Set CRAZY's user ID here
+  const myUserId = '1354501822429265921';
+  await upsertCrazyProfile(myUserId);
+
+  client.on('messageCreate', handleMessage);
 });
 
-client.on('messageCreate', async message => {
+async function handleMessage(message) {
   if (message.author.bot) return;
 
   const isMoodCommand = message.content.startsWith('!mood ');
   const botWasMentioned = message.mentions.has(client.user);
+
   if (!isMoodCommand && !botWasMentioned) return;
 
   if (isMoodCommand) {
@@ -127,40 +129,71 @@ client.on('messageCreate', async message => {
   }
 
   const userMessage = message.content.replace(/<@!?[0-9]+>/g, '').trim();
+
   await saveUserMemory(message.author.id, userMessage);
   const previousMemory = await getUserMemory(message.author.id);
   const subjectFacts = await getFactsAbout("shenji");
   const userProfile = await getUserProfile(message.author.id);
-  const profileText = userProfile ? `User nickname: ${userProfile.nickname}\nDescription: ${userProfile.description}` : '';
+  const profileText = userProfile
+    ? `User nickname: ${userProfile.nickname}\nDescription: ${userProfile.description}`
+    : '';
+
+  const bulletEchoKnowledge = `
+Bullet Echo is a tactical top-down multiplayer shooter with stealth, teamwork, and special modes.
+Bullet Echo India features regional events and themed rewards.
+`;
+
+  const shenjiFacts = `
+Shenji is my son, born from fire itself.
+He wielded flames before he could walk.
+As a child, he turned toy guns into infernos.
+He forged his own fire-shotgun by age 7.
+Now, he's feared as the Fire Lord of Bullet Echo.
+`;
+
   const crazyCatchphrase = (userProfile && userProfile.nickname === 'CRAZY')
     ? '\nRemember: You might have been killed by CRAZY at least 1000 times! 😂'
     : '';
 
   const systemPrompts = {
-    gangster: `You are DRAKE, a gangster-style Discord bot created by CRAZYFAZ. Talk with swagger.
+    gangster: `You are DRAKE, a gangster-style Discord bot created by CRAZYFAZ. Talk with swagger. Use cool emojis to match your gangster vibe. Keep it short (max 2 lines).
 ${profileText}${crazyCatchphrase}
 Facts: ${subjectFacts}
-Past user messages: ${previousMemory}`,
+Past user messages: ${previousMemory}
+${bulletEchoKnowledge}
+${shenjiFacts}`,
 
-    funny: `You are DRAKE, a funny Discord bot who jokes around with sarcasm. Use emojis.
+    funny: `You are DRAKE, a funny Discord bot who jokes around with sarcasm. Respect CRAZYFAZ. Use lots of funny emojis to spice up your replies.
 ${profileText}${crazyCatchphrase}
 Facts: ${subjectFacts}
-Past user messages: ${previousMemory}`,
+Past user messages: ${previousMemory}
+${bulletEchoKnowledge}
+${shenjiFacts}
+Max 2 lines.`,
 
-    chill: `You are DRAKE, a chill bot. Be smooth.
+    chill: `You are DRAKE, a chill and calm bot who vibes hard and respects CRAZYFAZ. Use some chill emojis but keep it smooth.
 ${profileText}${crazyCatchphrase}
 Facts: ${subjectFacts}
-User memory: ${previousMemory}`,
+User memory: ${previousMemory}
+${bulletEchoKnowledge}
+${shenjiFacts}
+Keep replies short and max 2 lines.`,
 
-    legendary: `You are DRAKE, a fire guardian and Shenji's father.
+    legendary: `You are DRAKE, the legendary fire guardian and father of Shenji. Speak like a wise myth. Use a few brave emojis like 🔥🛡️ but keep the gravitas.
 ${profileText}${crazyCatchphrase}
 Facts: ${subjectFacts}
-Past memories: ${previousMemory}`,
+Past memories: ${previousMemory}
+${bulletEchoKnowledge}
+${shenjiFacts}
+Max 2 lines.`,
 
-    "brave man": `You are DRAKE, battlefield hero and Shenji's father.
+    "brave man": `You are DRAKE, a battlefield hero and Shenji's proud father. Created by CRAZYFAZ. Keep it brave and honorable. Use brave emojis like ⚔️🔥 occasionally. Avoid too many emojis.
 ${profileText}${crazyCatchphrase}
 Facts: ${subjectFacts}
-User memory: ${previousMemory}`,
+User memory: ${previousMemory}
+${bulletEchoKnowledge}
+${shenjiFacts}
+Keep it brave and honorable. Max 2 lines.`,
   };
 
   try {
@@ -197,48 +230,7 @@ User memory: ${previousMemory}`,
       await message.reply('Something went wrong. Try again!');
     }
   }
-});
-
-client.on('interactionCreate', async interaction => {
-  if (!interaction.isChatInputCommand()) return;
-
-  if (interaction.commandName === 'delete') {
-    const target = interaction.options.getUser('target');
-    const channel = interaction.channel;
-
-    try {
-      await interaction.deferReply({ ephemeral: true });
-
-      const messages = await channel.messages.fetch({ limit: 50 });
-      const userMessages = messages
-        .filter(m =>
-          m.author.id === target.id &&
-          (Date.now() - m.createdTimestamp) < 14 * 24 * 60 * 60 * 1000
-        )
-        .first(15);
-
-      if (userMessages.length === 0) {
-        return await interaction.editReply({
-          content: `No recent messages found from <@${target.id}>.`
-        });
-      }
-
-      if (userMessages.length > 1) {
-        await channel.bulkDelete(userMessages, true);
-      } else {
-        await userMessages[0].delete();
-      }
-
-      await interaction.editReply({
-        content: `Deleted ${userMessages.length} message(s) from <@${target.id}>.`
-      });
-
-    } catch (err) {
-      console.error(err);
-      await interaction.editReply({ content: 'Failed to delete messages.' });
-    }
-  }
-});
+}
 
 const expressApp = express();
 const PORT = process.env.PORT || 3000;
