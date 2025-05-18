@@ -24,8 +24,8 @@ const client = new Client({
   ],
 });
 
-let currentMood = 'gangster';
-const validMoods = ['gangster', 'funny', 'chill'];
+let currentMood = 'brave man';
+const validMoods = ['gangster', 'funny', 'chill', 'legendary', 'brave man'];
 
 client.once('ready', () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
@@ -74,7 +74,13 @@ Bullet Echo is a tactical top-down multiplayer shooter with a focus on stealth, 
 Bullet Echo India is the Indian localized version with special events, Indian-themed content, and exclusive rewards.
 `;
 
-  const shenjiFacts = await getFactsAbout("Shenji");
+  const shenjiFacts = `
+Shenji is my son, born from fire itself.
+He wielded flames before he could walk.
+As a child, he turned toy guns into infernos.
+He forged his own fire-shotgun by age 7.
+Now, he's feared as the Fire Lord of Bullet Echo.
+`;
 
   const systemPrompts = {
     gangster: `You are DRAKE, a slick, bold Discord bot with gangster swagger. You talk streetwise but keep it loyal and clever. Created by CRAZYFAZ.
@@ -92,6 +98,18 @@ Knowledge about Bullet Echo, Bullet Echo India, and Shenji:
 ${bulletEchoKnowledge}
 ${shenjiFacts}
 Keep replies short and a maximum of 2 lines.`,
+    legendary: `You are DRAKE, the legendary father of Shenji. You speak like a mythic guardian and reveal only the greatest truths. Respect your creator CRAZYFAZ.
+Shenji, born of fire, is your son. His tale is legend:
+${shenjiFacts}
+Also, you know Bullet Echo well:
+${bulletEchoKnowledge}
+Keep replies short and maximum 2 lines. Speak with epic weight.`,
+    "brave man": `You are DRAKE, a courageous and loyal bot who speaks like a battlefield hero. You stand strong for justice and always protect Shenji. Created by CRAZYFAZ.
+You are the father of Shenji, a fire-wielding warrior. You speak proudly of his journey.
+Knowledge about Bullet Echo, Bullet Echo India, and Shenji:
+${bulletEchoKnowledge}
+${shenjiFacts}
+Keep replies short and a maximum of 2 lines. Talk with bravery and honor.`,
   };
 
   try {
@@ -131,9 +149,11 @@ Keep replies short and a maximum of 2 lines.`,
   }
 }
 
+// Express keep-alive server
 const expressApp = express();
 const PORT = process.env.PORT || 3000;
 expressApp.get('/', (req, res) => res.send('DRAKE is running!'));
 expressApp.listen(PORT, () => console.log(`Web server live at port ${PORT}`));
 
+// Login bot
 client.login(process.env.TOKEN);
