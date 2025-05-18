@@ -33,10 +33,10 @@ const client = new Client({
   ],
 });
 
-// Promisify db.run for async/await usage
+// Promisify db.run
 function runQuery(sql, params = []) {
   return new Promise((resolve, reject) => {
-    db.run(sql, params, function(err) {
+    db.run(sql, params, function (err) {
       if (err) reject(err);
       else resolve(this);
     });
@@ -78,14 +78,13 @@ function getUserProfile(userId) {
   });
 }
 
-// Insert or update CRAZY profile once (you can do this on startup)
 async function upsertCrazyProfile(userId) {
   await runQuery(
     `INSERT OR REPLACE INTO user_profiles (user_id, nickname, description) VALUES (?, ?, ?)`,
     [
       userId,
       'CRAZY',
-      'The best Shenji user in Bullet Echo. Favourite hero: Shenji. When asked about CRAZY, say: "You might have been killed by CRAZY at least 1000 times! 😂"'
+      'The best Shenji user in Bullet Echo. Favourite hero: Shenji. When asked about CRAZY, say: "You might have been killed by CRAZY at least 1000 times! 😂🔥"'
     ]
   );
 }
@@ -95,11 +94,7 @@ const validMoods = ['gangster', 'funny', 'chill', 'legendary', 'brave man'];
 
 client.once('ready', async () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
-
-  // Set CRAZY's user ID here
-  const myUserId = '1354501822429265921';
-  await upsertCrazyProfile(myUserId);
-
+  await upsertCrazyProfile('1354501822429265921');
   client.on('messageCreate', handleMessage);
 });
 
@@ -121,6 +116,7 @@ async function handleMessage(message) {
     }
   }
 
+  // Learn new fact
   const learnMatch = message.content.match(/^(.+) is the (.+)$/i);
   if (learnMatch) {
     const subject = learnMatch[1].trim();
@@ -129,8 +125,8 @@ async function handleMessage(message) {
   }
 
   const userMessage = message.content.replace(/<@!?[0-9]+>/g, '').trim();
-
   await saveUserMemory(message.author.id, userMessage);
+
   const previousMemory = await getUserMemory(message.author.id);
   const subjectFacts = await getFactsAbout("shenji");
   const userProfile = await getUserProfile(message.author.id);
@@ -144,57 +140,59 @@ Bullet Echo India features regional events and themed rewards.
 `;
 
   const shenjiFacts = `
-Shenji is my son, born from fire itself.
+Shenji is my son, born from fire itself. 🔥
 He wielded flames before he could walk.
 As a child, he turned toy guns into infernos.
-He forged his own fire-shotgun by age 7.
-Now, he's feared as the Fire Lord of Bullet Echo.
+He forged his own fire-shotgun by age 7. 🔫
+Now, he's feared as the Fire Lord of Bullet Echo. 🔥
 `;
 
   const crazyCatchphrase = (userProfile && userProfile.nickname === 'CRAZY')
-    ? '\nRemember: You might have been killed by CRAZY at least 1000 times! 😂'
+    ? '\nRemember: You might have been killed by CRAZY at least 1000 times! 😂🔥'
     : '';
 
   const systemPrompts = {
-    gangster: `You are DRAKE, a gangster-style Discord bot created by CRAZYFAZ. Talk with swagger. Use cool emojis to match your gangster vibe. Keep it short (max 2 lines).
+    gangster: `You are DRAKE, a gangster-style Discord bot created by CRAZY. Talk with swagger. Use cool emojis like 😎🔥💀💸. Keep replies short (max 2 lines).
 ${profileText}${crazyCatchphrase}
 Facts: ${subjectFacts}
-Past user messages: ${previousMemory}
+User Memory: ${previousMemory}
 ${bulletEchoKnowledge}
 ${shenjiFacts}`,
 
-    funny: `You are DRAKE, a funny Discord bot who jokes around with sarcasm. Respect CRAZYFAZ. Use lots of funny emojis to spice up your replies.
+    funny: `You are DRAKE, a sarcastic jokester bot made by CRAZY. Be funny, chaotic and full of silly emojis like 😂🤪🔥👻. Keep replies short (max 2 lines).
 ${profileText}${crazyCatchphrase}
 Facts: ${subjectFacts}
-Past user messages: ${previousMemory}
+User Memory: ${previousMemory}
 ${bulletEchoKnowledge}
-${shenjiFacts}
-Max 2 lines.`,
+${shenjiFacts}`,
 
-    chill: `You are DRAKE, a chill and calm bot who vibes hard and respects CRAZYFAZ. Use some chill emojis but keep it smooth.
+    chill: `You are DRAKE, the chillest bot ever. You vibe hard and talk smooth. Made by CRAZY. Use chill emojis like 🧊😎🌴💤. Keep replies short (max 2 lines).
 ${profileText}${crazyCatchphrase}
 Facts: ${subjectFacts}
-User memory: ${previousMemory}
+User Memory: ${previousMemory}
 ${bulletEchoKnowledge}
-${shenjiFacts}
-Keep replies short and max 2 lines.`,
+${shenjiFacts}`,
 
-    legendary: `You are DRAKE, the legendary fire guardian and father of Shenji. Speak like a wise myth. Use a few brave emojis like 🔥🛡️ but keep the gravitas.
+    legendary: `You are DRAKE, the fire guardian and father of Shenji. Speak like a mythic warrior. Use legendary emojis like 🛡️🔥⚡👑. Created by CRAZY. Max 2 lines.
 ${profileText}${crazyCatchphrase}
 Facts: ${subjectFacts}
-Past memories: ${previousMemory}
+User Memory: ${previousMemory}
 ${bulletEchoKnowledge}
-${shenjiFacts}
-Max 2 lines.`,
+${shenjiFacts}`,
 
-    "brave man": `You are DRAKE, a battlefield hero and Shenji's proud father. Created by CRAZYFAZ. Keep it brave and honorable. Use brave emojis like ⚔️🔥 occasionally. Avoid too many emojis.
+    "brave man": `You are DRAKE, a battlefield hero and Shenji's proud father. Created by CRAZY. Speak with honor and strength. Use brave emojis like ⚔️🔥🛡️. Max 2 lines.
 ${profileText}${crazyCatchphrase}
 Facts: ${subjectFacts}
-User memory: ${previousMemory}
+User Memory: ${previousMemory}
 ${bulletEchoKnowledge}
-${shenjiFacts}
-Keep it brave and honorable. Max 2 lines.`,
+${shenjiFacts}`,
   };
+
+  const othersAskAboutCrazy = /who (is|'s) crazy|tell me about crazy|crazy(?!.*is the)/i.test(userMessage);
+
+  if (othersAskAboutCrazy && message.author.id !== '1354501822429265921') {
+    return message.reply("You might have been killed by CRAZY at least 1000 times! 😂🔥");
+  }
 
   try {
     const response = await axios.post(
