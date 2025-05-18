@@ -112,8 +112,8 @@ const validMoods = ['gangster', 'funny', 'chill', 'legendary', 'brave man'];
 client.once('ready', async () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
 
-  // Upsert your CRAZY profile here (replace with your actual Discord user ID)
-  const myUserId = 'YOUR_DISCORD_USER_ID_HERE'; // <--- REPLACE THIS with your Discord ID
+  // Upsert your CRAZY profile here (1354501822429265921)
+  const myUserId = '1354501822429265921';
   await upsertCrazyProfile(myUserId);
 
   client.on('messageCreate', handleMessage);
