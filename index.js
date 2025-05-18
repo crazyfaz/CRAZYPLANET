@@ -20,14 +20,23 @@ const client = new Client({
 let currentMood = 'funny';
 const validMoods = ['funny', 'gangster', 'soft', 'rude', 'friendly', 'crazy'];
 
+// Your server and allowed channel IDs
+const YOUR_SERVER_ID = '1367900836801286244';
+const YOUR_CHANNEL_ID = '1372966958139576340';
+
 client.once('ready', () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
 });
 
-// Single event listener
 client.removeAllListeners('messageCreate');
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
+
+  // Restrict bot to respond only in specific channel on your server
+  if (message.guild?.id === YOUR_SERVER_ID && message.channel.id !== YOUR_CHANNEL_ID) {
+    return; // Ignore messages outside allowed channel in your server
+  }
+  // Else, respond freely in other servers and channels
 
   // Mood command
   if (message.content.startsWith('!mood ')) {
