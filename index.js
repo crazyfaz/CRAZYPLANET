@@ -1,34 +1,34 @@
 require('dotenv').config();
-const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder } = require('discord.js');
+const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, InteractionType } = require('discord.js');
 const axios = require('axios');
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const db = new sqlite3.Database('./drake_memory.db');
 
-// Create DB tables if they don't exist
-db.run(`CREATE TABLE IF NOT EXISTS facts (subject TEXT, key TEXT, value TEXT)`);
-db.run(`CREATE TABLE IF NOT EXISTS memories (user_id TEXT, message TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)`);
-db.run(`CREATE TABLE IF NOT EXISTS user_profiles (user_id TEXT PRIMARY KEY, nickname TEXT, description TEXT)`);
+db.run(`CREATE TABLE IF NOT EXISTS facts (
+  subject TEXT,
+  key TEXT,
+  value TEXT
+)`);
+db.run(`CREATE TABLE IF NOT EXISTS memories (
+  user_id TEXT,
+  message TEXT,
+  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+)`);
+db.run(`CREATE TABLE IF NOT EXISTS user_profiles (
+  user_id TEXT PRIMARY KEY,
+  nickname TEXT,
+  description TEXT
+)`);
 
-// Setup bot
-const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
-  ],
-});
-
-// Helper functions
 function runQuery(sql, params = []) {
   return new Promise((resolve, reject) => {
-    db.run(sql, params, function(err) {
+    db.run(sql, params, function (err) {
       if (err) reject(err);
       else resolve(this);
     });
   });
 }
-
 async function getFactsAbout(subject) {
   return new Promise((resolve, reject) => {
     db.all(`SELECT key, value FROM facts WHERE subject = ?`, [subject], (err, rows) => {
@@ -37,11 +37,9 @@ async function getFactsAbout(subject) {
     });
   });
 }
-
 async function saveUserMemory(userId, message) {
   await runQuery(`INSERT INTO memories (user_id, message) VALUES (?, ?)`, [userId, message]);
 }
-
 async function getUserMemory(userId, limit = 5) {
   return new Promise((resolve, reject) => {
     db.all(
@@ -54,7 +52,6 @@ async function getUserMemory(userId, limit = 5) {
     );
   });
 }
-
 function getUserProfile(userId) {
   return new Promise((resolve, reject) => {
     db.get(`SELECT nickname, description FROM user_profiles WHERE user_id = ?`, [userId], (err, row) => {
@@ -63,14 +60,13 @@ function getUserProfile(userId) {
     });
   });
 }
-
 async function upsertCrazyProfile(userId) {
   await runQuery(
     `INSERT OR REPLACE INTO user_profiles (user_id, nickname, description) VALUES (?, ?, ?)`,
     [
       userId,
       'CRAZY',
-      'The best Shenji user in Bullet Echo. Favourite hero: Shenji. When asked about CRAZY, say: "You might have been killed by CRAZY at least 1000 times! 😂"'
+      'The best Shenji user in Bullet Echo. Favourite hero: Shenji. When asked about CRAZY, say: "You might have been killed by CRAZY at least 1000 times! 😂"',
     ]
   );
 }
@@ -78,46 +74,48 @@ async function upsertCrazyProfile(userId) {
 let currentMood = 'brave man';
 const validMoods = ['gangster', 'funny', 'chill', 'legendary', 'brave man'];
 
-// Slash Command: /delete @user
-const commands = [
-  new SlashCommandBuilder()
-    .setName('delete')
-    .setDescription('Delete all memory of a user')
-    .addUserOption(option =>
-      option.setName('target').setDescription('The user to forget').setRequired(true)
-    )
-    .toJSON()
-];
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+  ],
+});
 
-// Register slash command (on startup)
 client.once('ready', async () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
+  await upsertCrazyProfile('YOUR_DISCORD_USER_ID');
+
+  const commands = [
+    new SlashCommandBuilder()
+      .setName('delete')
+      .setDescription('Delete memory of a user')
+      .addUserOption(option =>
+        option.setName('target').setDescription('The user to delete memory of').setRequired(true)
+      )
+      .toJSON(),
+  ];
+
   const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
   try {
-    await rest.put(
-      Routes.applicationCommands(client.user.id),
-      { body: commands }
-    );
-    console.log('✅ Slash commands registered.');
-  } catch (err) {
-    console.error('Slash command error:', err);
+    await rest.put(Routes.applicationCommands(process.env.CLIENT_ID), {
+      body: commands,
+    });
+    console.log('✅ Slash command registered.');
+  } catch (error) {
+    console.error('Error registering slash command:', error);
   }
-
-  const myUserId = 'YOUR_DISCORD_USER_ID_HERE'; // Replace this!
-  await upsertCrazyProfile(myUserId);
 });
 
 client.on('interactionCreate', async interaction => {
-  if (!interaction.isChatInputCommand()) return;
+  if (interaction.type !== InteractionType.ApplicationCommand) return;
+
   if (interaction.commandName === 'delete') {
     const user = interaction.options.getUser('target');
-    db.run(`DELETE FROM memories WHERE user_id = ?`, [user.id], (err) => {
-      if (err) {
-        console.error(err);
-        interaction.reply({ content: 'Error deleting memory.', ephemeral: true });
-      } else {
-        interaction.reply({ content: `All memory of ${user.username} has been wiped.`, ephemeral: true });
-      }
+    await runQuery(`DELETE FROM memories WHERE user_id = ?`, [user.id]);
+    return interaction.reply({
+      content: `Deleted memory of ${user.username}.`,
+      flags: 1 << 6, // Ephemeral response
     });
   }
 });
@@ -148,6 +146,7 @@ client.on('messageCreate', async message => {
   }
 
   const userMessage = message.content.replace(/<@!?[0-9]+>/g, '').trim();
+
   await saveUserMemory(message.author.id, userMessage);
   const previousMemory = await getUserMemory(message.author.id);
   const subjectFacts = await getFactsAbout("shenji");
@@ -155,48 +154,63 @@ client.on('messageCreate', async message => {
   const profileText = userProfile
     ? `User nickname: ${userProfile.nickname}\nDescription: ${userProfile.description}`
     : '';
+
+  const bulletEchoKnowledge = `
+Bullet Echo is a tactical top-down multiplayer shooter with stealth, teamwork, and special modes.
+Bullet Echo India features regional events and themed rewards.
+`;
+
+  const shenjiFacts = `
+Shenji is my son, born from fire itself.
+He wielded flames before he could walk.
+As a child, he turned toy guns into infernos.
+He forged his own fire-shotgun by age 7.
+Now, he's feared as the Fire Lord of Bullet Echo.
+`;
+
   const crazyCatchphrase = (userProfile && userProfile.nickname === 'CRAZY')
     ? '\nRemember: You might have been killed by CRAZY at least 1000 times! 😂'
     : '';
 
-  const bulletEchoKnowledge = `Bullet Echo is a tactical top-down multiplayer shooter.`;
-  const shenjiFacts = `Shenji is my son, born from fire itself.`;
-
   const systemPrompts = {
-    gangster: `You are DRAKE, a gangster bot. Swagger mode. Keep it short.
+    gangster: `You are DRAKE, a gangster-style Discord bot created by CRAZYFAZ. Talk with swagger. Use cool emojis to match your gangster vibe. Keep it short (max 2 lines).
 ${profileText}${crazyCatchphrase}
 Facts: ${subjectFacts}
-Past messages: ${previousMemory}
+Past user messages: ${previousMemory}
 ${bulletEchoKnowledge}
 ${shenjiFacts}`,
 
-    funny: `You are DRAKE, a sarcastic funny bot. Use emojis. Respect CRAZY.
+    funny: `You are DRAKE, a funny Discord bot who jokes around with sarcasm. Respect CRAZYFAZ. Use lots of funny emojis to spice up your replies.
 ${profileText}${crazyCatchphrase}
 Facts: ${subjectFacts}
-Past: ${previousMemory}
+Past user messages: ${previousMemory}
 ${bulletEchoKnowledge}
-${shenjiFacts}`,
+${shenjiFacts}
+Max 2 lines.`,
 
-    chill: `You are DRAKE, chill and smooth bot.
-${profileText}${crazyCatchphrase}
-Facts: ${subjectFacts}
-Memory: ${previousMemory}
-${bulletEchoKnowledge}
-${shenjiFacts}`,
-
-    legendary: `You are DRAKE, legendary myth and father of Shenji. Speak like a wise firelord.
-${profileText}${crazyCatchphrase}
-Facts: ${subjectFacts}
-Memories: ${previousMemory}
-${bulletEchoKnowledge}
-${shenjiFacts}`,
-
-    "brave man": `You are DRAKE, battlefield hero and Shenji's father. Created by CRAZYFAZ.
+    chill: `You are DRAKE, a chill and calm bot who vibes hard and respects CRAZYFAZ. Use some chill emojis but keep it smooth.
 ${profileText}${crazyCatchphrase}
 Facts: ${subjectFacts}
 User memory: ${previousMemory}
 ${bulletEchoKnowledge}
-${shenjiFacts}`
+${shenjiFacts}
+Keep replies short and max 2 lines.`,
+
+    legendary: `You are DRAKE, the legendary fire guardian and father of Shenji. Speak like a wise myth. Use a few brave emojis like 🔥🛡️ but keep the gravitas.
+${profileText}${crazyCatchphrase}
+Facts: ${subjectFacts}
+Past memories: ${previousMemory}
+${bulletEchoKnowledge}
+${shenjiFacts}
+Max 2 lines.`,
+
+    "brave man": `You are DRAKE, a battlefield hero and Shenji's proud father. Created by CRAZYFAZ. Keep it brave and honorable. Use brave emojis like ⚔️🔥 occasionally. Avoid too many emojis.
+${profileText}${crazyCatchphrase}
+Facts: ${subjectFacts}
+User memory: ${previousMemory}
+${bulletEchoKnowledge}
+${shenjiFacts}
+Keep it brave and honorable. Max 2 lines.`,
   };
 
   try {
@@ -236,7 +250,8 @@ ${shenjiFacts}`
 });
 
 const expressApp = express();
+const PORT = process.env.PORT || 3000;
 expressApp.get('/', (req, res) => res.send('DRAKE is running!'));
-expressApp.listen(process.env.PORT || 3000, () => console.log('Web server up!'));
+expressApp.listen(PORT, () => console.log(`Web server live at port ${PORT}`));
 
 client.login(process.env.TOKEN);
