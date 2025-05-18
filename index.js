@@ -16,15 +16,13 @@ const validMoods = ['funny', 'gangster', 'soft', 'rude', 'friendly', 'crazy'];
 
 client.once('ready', () => {
   console.log(`Bot is online as ${client.user.tag}`);
-  console.log('Registered event listeners:', client.listenerCount('messageCreate'));
+  console.log('Registered messageCreate listeners:', client.listenerCount('messageCreate'));
 });
 
 client.on('messageCreate', async (message) => {
-  // Don't respond to other bots (or itself)
   if (message.author.bot) return;
 
-  // Optional: only respond in specific channel
-  // if (message.channel.id !== 'YOUR_CHANNEL_ID') return;
+  console.log(`Received message: "${message.content}" from ${message.author.tag}`);
 
   // Handle mood switching
   if (message.content.startsWith('!mood ')) {
@@ -37,7 +35,6 @@ client.on('messageCreate', async (message) => {
     }
   }
 
-  // Main OpenRouter AI chat
   try {
     const response = await axios.post(
       'https://openrouter.ai/api/v1/chat/completions',
@@ -63,9 +60,16 @@ client.on('messageCreate', async (message) => {
       }
     );
 
-    const reply = response.data.choices?.[0]?.message?.content;
-    if (!reply) throw new Error('No content in response');
-    await message.reply(reply);
+    const choices = response.data.choices;
+    if (choices && choices.length > 0) {
+      const reply = choices[0].message?.content;
+      if (reply) {
+        console.log(`Replying to ${message.author.tag}: ${reply}`);
+        await message.reply(reply);
+      }
+    } else {
+      console.warn('No choices found in OpenRouter response.');
+    }
   } catch (error) {
     console.error('OpenRouter error:', error?.response?.data || error.message);
     const apiError = error.response?.data?.error;
