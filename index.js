@@ -27,13 +27,15 @@ const client = new Client({
   ],
 });
 
-let currentMood = 'brave man';
-const validMoods = ['gangster', 'funny', 'chill', 'legendary', 'brave man'];
-
-client.once('ready', () => {
-  console.log(`✅ Logged in as ${client.user.tag}`);
-  client.on('messageCreate', handleMessage);
-});
+// Helper to promisify db.run for async/await
+function runQuery(sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.run(sql, params, function(err) {
+      if (err) reject(err);
+      else resolve(this);
+    });
+  });
+}
 
 async function getFactsAbout(subject) {
   return new Promise((resolve, reject) => {
@@ -45,7 +47,7 @@ async function getFactsAbout(subject) {
 }
 
 async function saveUserMemory(userId, message) {
-  db.run(`INSERT INTO memories (user_id, message) VALUES (?, ?)`, [userId, message]);
+  await runQuery(`INSERT INTO memories (user_id, message) VALUES (?, ?)`, [userId, message]);
 }
 
 async function getUserMemory(userId, limit = 5) {
@@ -60,6 +62,14 @@ async function getUserMemory(userId, limit = 5) {
     );
   });
 }
+
+let currentMood = 'brave man';
+const validMoods = ['gangster', 'funny', 'chill', 'legendary', 'brave man'];
+
+client.once('ready', () => {
+  console.log(`✅ Logged in as ${client.user.tag}`);
+  client.on('messageCreate', handleMessage);
+});
 
 async function handleMessage(message) {
   if (message.author.bot) return;
@@ -79,11 +89,12 @@ async function handleMessage(message) {
     }
   }
 
+  // Learn new fact pattern: "X is the Y"
   const learnMatch = message.content.match(/^(.+) is the (.+)$/i);
   if (learnMatch) {
     const subject = learnMatch[1].trim();
     const value = learnMatch[2].trim();
-    db.run(`INSERT INTO facts (subject, key, value) VALUES (?, ?, ?)`, [subject, 'title', value]);
+    await runQuery(`INSERT INTO facts (subject, key, value) VALUES (?, ?, ?)`, [subject, 'title', value]);
   }
 
   const userMessage = message.content.replace(/<@!?[0-9]+>/g, '').trim();
@@ -106,30 +117,34 @@ Now, he's feared as the Fire Lord of Bullet Echo.
 `;
 
   const systemPrompts = {
-    gangster: `You are DRAKE, a gangster-style Discord bot created by CRAZYFAZ. Talk with swagger. Keep it short (max 2 lines).
+    gangster: `You are DRAKE, a gangster-style Discord bot created by CRAZYFAZ. Talk with swagger. Use cool emojis to match your gangster vibe. Keep it short (max 2 lines).
 Facts: ${subjectFacts}
 Past user messages: ${previousMemory}
 ${bulletEchoKnowledge}
 ${shenjiFacts}`,
-    funny: `You are DRAKE, a funny Discord bot who jokes around with sarcasm. Respect CRAZYFAZ.
+
+    funny: `You are DRAKE, a funny Discord bot who jokes around with sarcasm. Respect CRAZYFAZ. Use lots of funny emojis to spice up your replies.
 Facts: ${subjectFacts}
 Past user messages: ${previousMemory}
 ${bulletEchoKnowledge}
 ${shenjiFacts}
 Max 2 lines.`,
-    chill: `You are DRAKE, a chill and calm bot who vibes hard and respects CRAZYFAZ.
+
+    chill: `You are DRAKE, a chill and calm bot who vibes hard and respects CRAZYFAZ. Use some chill emojis but keep it smooth.
 Facts: ${subjectFacts}
 User memory: ${previousMemory}
 ${bulletEchoKnowledge}
 ${shenjiFacts}
 Keep replies short and max 2 lines.`,
-    legendary: `You are DRAKE, the legendary fire guardian and father of Shenji. Speak like a wise myth.
+
+    legendary: `You are DRAKE, the legendary fire guardian and father of Shenji. Speak like a wise myth. Use very few or no emojis to keep the gravitas.
 Facts: ${subjectFacts}
 Past memories: ${previousMemory}
 ${bulletEchoKnowledge}
 ${shenjiFacts}
 Max 2 lines.`,
-    "brave man": `You are DRAKE, a battlefield hero and Shenji's proud father. Created by CRAZYFAZ.
+
+    "brave man": `You are DRAKE, a battlefield hero and Shenji's proud father. Created by CRAZYFAZ. Keep it brave and honorable. Avoid emojis.
 Facts: ${subjectFacts}
 User memory: ${previousMemory}
 ${bulletEchoKnowledge}
@@ -178,4 +193,4 @@ const PORT = process.env.PORT || 3000;
 expressApp.get('/', (req, res) => res.send('DRAKE is running!'));
 expressApp.listen(PORT, () => console.log(`Web server live at port ${PORT}`));
 
-client.login(process.env.TOKEN)
+client.login(process.env.TOKEN);
