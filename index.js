@@ -17,6 +17,12 @@ db.run(`CREATE TABLE IF NOT EXISTS memories (
   timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
 )`);
 
+db.run(`CREATE TABLE IF NOT EXISTS user_profiles (
+  user_id TEXT PRIMARY KEY,
+  nickname TEXT,
+  description TEXT
+)`);
+
 console.log("Environment:", process.env.NODE_ENV || 'development');
 
 const client = new Client({
@@ -27,7 +33,7 @@ const client = new Client({
   ],
 });
 
-// Helper to promisify db.run for async/await
+// Promisify db.run for async/await usage
 function runQuery(sql, params = []) {
   return new Promise((resolve, reject) => {
     db.run(sql, params, function(err) {
@@ -63,11 +69,37 @@ async function getUserMemory(userId, limit = 5) {
   });
 }
 
+function getUserProfile(userId) {
+  return new Promise((resolve, reject) => {
+    db.get(`SELECT nickname, description FROM user_profiles WHERE user_id = ?`, [userId], (err, row) => {
+      if (err) reject(err);
+      else resolve(row);
+    });
+  });
+}
+
+// Insert or update CRAZY profile once (you can do this on startup)
+async function upsertCrazyProfile(userId) {
+  await runQuery(
+    `INSERT OR REPLACE INTO user_profiles (user_id, nickname, description) VALUES (?, ?, ?)`,
+    [
+      userId,
+      'CRAZY',
+      'The best Shenji user in Bullet Echo. Favourite hero: Shenji. When asked about CRAZY, say: "You might have been killed by CRAZY at least 1000 times! 😂"'
+    ]
+  );
+}
+
 let currentMood = 'brave man';
 const validMoods = ['gangster', 'funny', 'chill', 'legendary', 'brave man'];
 
-client.once('ready', () => {
+client.once('ready', async () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
+
+  // Upsert your CRAZY profile here (replace with your actual Discord user ID)
+  const myUserId = 'YOUR_DISCORD_USER_ID_HERE'; // <--- REPLACE THIS with your Discord ID
+  await upsertCrazyProfile(myUserId);
+
   client.on('messageCreate', handleMessage);
 });
 
@@ -102,6 +134,10 @@ async function handleMessage(message) {
   await saveUserMemory(message.author.id, userMessage);
   const previousMemory = await getUserMemory(message.author.id);
   const subjectFacts = await getFactsAbout("shenji");
+  const userProfile = await getUserProfile(message.author.id);
+  const profileText = userProfile
+    ? `User nickname: ${userProfile.nickname}\nDescription: ${userProfile.description}`
+    : '';
 
   const bulletEchoKnowledge = `
 Bullet Echo is a tactical top-down multiplayer shooter with stealth, teamwork, and special modes.
@@ -116,14 +152,21 @@ He forged his own fire-shotgun by age 7.
 Now, he's feared as the Fire Lord of Bullet Echo.
 `;
 
+  // Add the special CRAZY catchphrase if user is CRAZY
+  const crazyCatchphrase = (userProfile && userProfile.nickname === 'CRAZY')
+    ? '\nRemember: You might have been killed by CRAZY at least 1000 times! 😂'
+    : '';
+
   const systemPrompts = {
     gangster: `You are DRAKE, a gangster-style Discord bot created by CRAZYFAZ. Talk with swagger. Use cool emojis to match your gangster vibe. Keep it short (max 2 lines).
+${profileText}${crazyCatchphrase}
 Facts: ${subjectFacts}
 Past user messages: ${previousMemory}
 ${bulletEchoKnowledge}
 ${shenjiFacts}`,
 
     funny: `You are DRAKE, a funny Discord bot who jokes around with sarcasm. Respect CRAZYFAZ. Use lots of funny emojis to spice up your replies.
+${profileText}${crazyCatchphrase}
 Facts: ${subjectFacts}
 Past user messages: ${previousMemory}
 ${bulletEchoKnowledge}
@@ -131,20 +174,23 @@ ${shenjiFacts}
 Max 2 lines.`,
 
     chill: `You are DRAKE, a chill and calm bot who vibes hard and respects CRAZYFAZ. Use some chill emojis but keep it smooth.
+${profileText}${crazyCatchphrase}
 Facts: ${subjectFacts}
 User memory: ${previousMemory}
 ${bulletEchoKnowledge}
 ${shenjiFacts}
 Keep replies short and max 2 lines.`,
 
-    legendary: `You are DRAKE, the legendary fire guardian and father of Shenji. Speak like a wise myth. Use very few or no emojis to keep the gravitas.
+    legendary: `You are DRAKE, the legendary fire guardian and father of Shenji. Speak like a wise myth. Use a few brave emojis like 🔥🛡️ but keep the gravitas.
+${profileText}${crazyCatchphrase}
 Facts: ${subjectFacts}
 Past memories: ${previousMemory}
 ${bulletEchoKnowledge}
 ${shenjiFacts}
 Max 2 lines.`,
 
-    "brave man": `You are DRAKE, a battlefield hero and Shenji's proud father. Created by CRAZYFAZ. Keep it brave and honorable. Avoid emojis.
+    "brave man": `You are DRAKE, a battlefield hero and Shenji's proud father. Created by CRAZYFAZ. Keep it brave and honorable. Use brave emojis like ⚔️🔥 occasionally. Avoid too many emojis.
+${profileText}${crazyCatchphrase}
 Facts: ${subjectFacts}
 User memory: ${previousMemory}
 ${bulletEchoKnowledge}
