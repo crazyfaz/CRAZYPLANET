@@ -15,16 +15,25 @@ const client = new Client({
   ],
 });
 
+// Moods
 let currentMood = 'gangster';
 const validMoods = ['gangster', 'funny', 'chill'];
+
+// Track message IDs already replied to (to prevent double replies)
+const repliedMessages = new Set();
 
 client.once('ready', () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
 });
 
-client.removeAllListeners('messageCreate');
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
+
+  // Prevent replying twice to same message
+  if (repliedMessages.has(message.id)) return;
+  repliedMessages.add(message.id);
+  // Clean up memory after 1 minute
+  setTimeout(() => repliedMessages.delete(message.id), 60000);
 
   // Restrict to specific channel only on your server
   if (message.guild?.id === '1367900836801286244') {
@@ -42,9 +51,7 @@ client.on('messageCreate', async (message) => {
     }
   }
 
-  // Prevent multiple replies on same message
-  if (message.replied || message.crosspostable) return;
-
+  // Define system prompts per mood
   const systemPrompts = {
     gangster: `You are CRIMZYY, a slick, bold Discord bot with gangster swagger. You talk streetwise but keep it loyal and clever. Created by CRAZYFAZ.`,
     funny: `You are CRIMZYY, a hilarious and sarcastic Discord bot with wild comebacks and clever humor. Always respect CRAZYFAZ.`,
@@ -100,4 +107,4 @@ app.get('/', (req, res) => res.send('CRIMZYY is running!'));
 app.listen(PORT, () => console.log(`Web server live at port ${PORT}`));
 
 // Login bot
-client.login(process.env.TOKEN);
+client.login(process.env.TOKEN)
