@@ -1,6 +1,12 @@
+require('dotenv').config();
 const { Client, GatewayIntentBits } = require('discord.js');
 const axios = require('axios');
-require('dotenv').config();
+const express = require('express');
+
+// Environment check
+console.log("Environment:", process.env.NODE_ENV || 'development');
+console.log("OPENROUTER_API_KEY:", process.env.OPENROUTER_API_KEY ? 'Loaded' : 'Missing');
+console.log("TOKEN:", process.env.TOKEN ? 'Loaded' : 'Missing');
 
 const client = new Client({
   intents: [
@@ -10,31 +16,31 @@ const client = new Client({
   ],
 });
 
-// Mood system
+// Moods
 let currentMood = 'funny';
 const validMoods = ['funny', 'gangster', 'soft', 'rude', 'friendly', 'crazy'];
 
 client.once('ready', () => {
-  console.log(`Bot is online as ${client.user.tag}`);
-  console.log('Registered messageCreate listeners:', client.listenerCount('messageCreate'));
+  console.log(`✅ Logged in as ${client.user.tag}`);
 });
 
+// Single event listener
+client.removeAllListeners('messageCreate');
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
 
-  console.log(`Received message: "${message.content}" from ${message.author.tag}`);
-
-  // Handle mood switching
+  // Mood command
   if (message.content.startsWith('!mood ')) {
     const newMood = message.content.split(' ')[1]?.toLowerCase();
     if (validMoods.includes(newMood)) {
       currentMood = newMood;
-      return message.reply(`Mood updated to **${newMood}**.`);
+      return message.reply(`Mood switched to **${newMood}**.`);
     } else {
       return message.reply(`Invalid mood! Try one of: ${validMoods.join(', ')}`);
     }
   }
 
+  // Main AI chat
   try {
     const response = await axios.post(
       'https://openrouter.ai/api/v1/chat/completions',
@@ -43,7 +49,8 @@ client.on('messageCreate', async (message) => {
         messages: [
           {
             role: 'system',
-            content: `You are CRIMZYY, a Discord bot with a ${currentMood} personality. You are loyal to your creator CRAZYFAZ. Keep replies short, witty, and in ${currentMood} tone.`,
+            content: `You are CRIMZYY, a Discord bot with a ${currentMood} personality. 
+You are loyal to your creator CRAZYFAZ. Respond in short, witty ${currentMood}-style replies.`,
           },
           {
             role: 'user',
@@ -60,28 +67,28 @@ client.on('messageCreate', async (message) => {
       }
     );
 
-    const choices = response.data.choices;
-    if (choices && choices.length > 0) {
-      const reply = choices[0].message?.content;
-      if (reply) {
-        console.log(`Replying to ${message.author.tag}: ${reply}`);
-        await message.reply(reply);
-      }
-    } else {
-      console.warn('No choices found in OpenRouter response.');
-    }
+    const reply = response.data.choices?.[0]?.message?.content;
+    if (!reply) throw new Error('No content in response');
+    await message.reply(reply);
   } catch (error) {
     console.error('OpenRouter error:', error?.response?.data || error.message);
     const apiError = error.response?.data?.error;
 
     if (apiError?.code === 401) {
-      await message.reply('Oops! My brain is locked. Missing API key (401).');
+      await message.reply('Missing API key (401).');
     } else if (apiError?.code === 402) {
-      await message.reply('Sorry, I am out of OpenRouter credits. Recharge me boss!');
+      await message.reply('Out of credits. Please recharge.');
     } else {
-      await message.reply('Sorry, I had a brain freeze. Try again!');
+      await message.reply('Something went wrong. Try again!');
     }
   }
 });
 
+// Start express server for Render ping
+const app = express();
+const PORT = process.env.PORT || 3000;
+app.get('/', (req, res) => res.send('CRIMZYY is running!'));
+app.listen(PORT, () => console.log(`Web server live at port ${PORT}`));
+
+// Login bot
 client.login(process.env.TOKEN);
