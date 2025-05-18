@@ -1,46 +1,243 @@
+require('dotenv').config();
+const { Client, GatewayIntentBits } = require('discord.js');
+const axios = require('axios');
+const express = require('express');
+const sqlite3 = require('sqlite3').verbose();
+const db = new sqlite3.Database('./drake_memory.db');
+
+// Create tables if they don't exist
+db.run(`CREATE TABLE IF NOT EXISTS facts (
+  subject TEXT,
+  key TEXT,
+  value TEXT
+)`);
+
+db.run(`CREATE TABLE IF NOT EXISTS memories (
+  user_id TEXT,
+  message TEXT,
+  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+)`);
+
+db.run(`CREATE TABLE IF NOT EXISTS user_profiles (
+  user_id TEXT PRIMARY KEY,
+  nickname TEXT,
+  description TEXT
+)`);
+
+console.log("Environment:", process.env.NODE_ENV || 'development');
+
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+  ],
+});
+
+// Promisify db.run for async/await usage
+function runQuery(sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.run(sql, params, function (err) {
+      if (err) reject(err);
+      else resolve(this);
+    });
+  });
+}
+
+async function getFactsAbout(subject) {
+  return new Promise((resolve, reject) => {
+    db.all(
+      `SELECT key, value FROM facts WHERE subject = ?`,
+      [subject],
+      (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows.map(r => `${r.key}: ${r.value}`).join('\n'));
+      }
+    );
+  });
+}
+
+async function saveUserMemory(userId, message) {
+  await runQuery(`INSERT INTO memories (user_id, message) VALUES (?, ?)`, [
+    userId,
+    message,
+  ]);
+}
+
+async function getUserMemory(userId, limit = 5) {
+  return new Promise((resolve, reject) => {
+    db.all(
+      `SELECT message FROM memories WHERE user_id = ? ORDER BY timestamp DESC LIMIT ?`,
+      [userId, limit],
+      (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows.map(row => row.message).reverse().join('\n'));
+      }
+    );
+  });
+}
 
 function getUserProfile(userId) {
-      gangster: `You are DRAKE, a gangster-style Discord bot created by CRAZY. Talk with swagger. Use cool emojis like 😎🔥💀💸. Keep replies short (max 2 lines).
-${profileText}${crazyCatchphrase}
-Facts: ${subjectFacts}
-User Memory: ${previousMemory}
+  return new Promise((resolve, reject) => {
+    db.get(
+      `SELECT nickname, description FROM user_profiles WHERE user_id = ?`,
+      [userId],
+      (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      }
+    );
+  });
+}
+
+// Insert or update CRAZY profile once (on startup)
+async function upsertCrazyProfile(userId) {
+  await runQuery(
+    `INSERT OR REPLACE INTO user_profiles (user_id, nickname, description) VALUES (?, ?, ?)`,
+    [
+      userId,
+      'CRAZY',
+      'The best Shenji user in Bullet Echo. Favourite hero: Shenji. When asked about CRAZY, say: "You might have been killed by CRAZY at least 1000 times! 😂"',
+    ]
+  );
+}
+
+let currentMood = 'brave man';
+const validMoods = ['gangster', 'funny', 'chill', 'legendary', 'brave man'];
+
+client.once('ready', async () => {
+  console.log(`✅ Logged in as ${client.user.tag}`);
+
+  // Replace with your actual Discord user ID here:
+  const myUserId = '1354501822429265921';
+  await upsertCrazyProfile(myUserId);
+
+  client.on('messageCreate', handleMessage);
+});
+
+async function handleMessage(message) {
+  if (message.author.bot) return;
+
+  const isMoodCommand = message.content.startsWith('!mood ');
+  const isDrawCommand = message.content.startsWith('!draw ');
+  const botWasMentioned = message.mentions.has(client.user);
+
+  if (!isMoodCommand && !botWasMentioned && !isDrawCommand) return;
+
+  // Delete the command message after 1 second (1000ms)
+  setTimeout(() => {
+    message.delete().catch(() => {});
+  }, 1000);
+
+  if (isMoodCommand) {
+    const newMood = message.content.slice(6).trim().toLowerCase();
+    if (validMoods.includes(newMood)) {
+      currentMood = newMood;
+      return message.reply(`Mood switched to **${newMood}**.`);
+    } else {
+      return message.reply(
+        `Invalid mood! Try one of: ${validMoods.join(', ')}`
+      );
+    }
+  }
+
+  if (isDrawCommand) {
+    const prompt = message.content.slice(6).trim();
+    if (!prompt) return message.reply('Please provide a prompt after !draw');
+
+    try {
+      const imageResponse = await axios.post(
+        'https://openrouter.ai/api/v1/images/generations',
+        {
+          model: 'openai/dall-e-3',
+          prompt: prompt,
+          n: 1,
+          size: '1024x1024',
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      const imageUrl = imageResponse.data.data[0].url;
+      await message.reply({
+        content: `Here is your image for: "${prompt}"`,
+        files: [imageUrl],
+      });
+    } catch (error) {
+      console.error('Image generation error:', error?.response?.data || error.message);
+      await message.reply('Failed to generate image. Try again later.');
+    }
+    return;
+  }
+
+  // Learn new fact pattern: "X is the Y"
+  const learnMatch = message.content.match(/^(.+) is the (.+)$/i);
+  if (learnMatch) {
+    const subject = learnMatch[1].trim();
+    const value = learnMatch[2].trim();
+    await runQuery(
+      `INSERT INTO facts (subject, key, value) VALUES (?, ?, ?)`,
+      [subject, 'title', value]
+    );
+  }
+
+  const userMessage = message.content.replace(/<@!?[0-9]+>/g, '').trim();
+
+  // Special reply if someone asks about CRAZY (and they're not CRAZY)
+  if (message.content.toLowerCase().includes('crazy')) {
+    const userProfile = await getUserProfile(message.author.id);
+    if (!userProfile || userProfile.nickname !== 'CRAZY') {
+      return await message.reply(
+        'Hey! CRAZY is the boss here. His creator\'s name is just CRAZY, no "FAZ". Remember that! ⚔️🔥'
+      );
+    }
+  }
+
+  await saveUserMemory(message.author.id, userMessage);
+  const previousMemory = await getUserMemory(message.author.id);
+  const subjectFacts = await getFactsAbout('shenji');
+  const userProfile = await getUserProfile(message.author.id);
+
+  const profileText = userProfile
+    ? `User nickname: ${userProfile.nickname}\nDescription: ${userProfile.description}`
+    : '';
+
+  const bulletEchoKnowledge =
+    'Bullet Echo is a tactical top-down multiplayer shooter with stealth, teamwork, and special modes. Bullet Echo India features regional events and themed rewards.';
+
+  const shenjiFacts =
+    "Shenji is my son, born from fire itself. He wielded flames before he could walk. As a child, he turned toy guns into infernos. He forged his own fire-shotgun by age 7. Now, he's feared as the Fire Lord of Bullet Echo.";
+
+  const crazyCatchphrase =
+    userProfile && userProfile.nickname === 'CRAZY'
+      ? '\nRemember: You are my creator crazy 🙏'
+      : '';
+
+  const systemPrompts = {
+    gangster: `You are DRAKE, a gangster-style Discord bot created by CRAZY. Talk with swagger. Use cool emojis like 😎💥🔥💯😈 to match your gangster vibe. Keep it short (max 2 lines).
+${profileText}${crazyCatchphrase} Facts: ${subjectFacts} Past user messages: ${previousMemory}
 ${bulletEchoKnowledge}
 ${shenjiFacts}`,
-
-    funny: `You are DRAKE, a sarcastic jokester bot made by CRAZY. Be funny, chaotic and full of silly emojis like 😂🤪🔥👻. Keep replies short (max 2 lines).
-${profileText}${crazyCatchphrase}
-Facts: ${subjectFacts}
-User Memory: ${previousMemory}
+    funny: `You are DRAKE, a funny Discord bot who jokes around with sarcasm. Respect CRAZY. Use lots of funny emojis like 😂🤣😜🤪🤡😹 to spice up your replies. Max 2 lines.
+${profileText}${crazyCatchphrase} Facts: ${subjectFacts} Past user messages: ${previousMemory}
 ${bulletEchoKnowledge}
 ${shenjiFacts}`,
-
-    chill: `You are DRAKE, the chillest bot ever. You vibe hard and talk smooth. Made by CRAZY. Use chill emojis like 🧊😎🌴💤. Keep replies short (max 2 lines).
-${profileText}${crazyCatchphrase}
-Facts: ${subjectFacts}
-User Memory: ${previousMemory}
+    chill: `You are DRAKE, a chill and calm bot who vibes hard and respects CRAZY. Use some chill emojis like 😌🌴🌊🍃🧘‍♂️ to keep it smooth. Max 2 lines.
+${profileText}${crazyCatchphrase} Facts: ${subjectFacts} User memory: ${previousMemory}
 ${bulletEchoKnowledge}
 ${shenjiFacts}`,
-
-    legendary: `You are DRAKE, the fire guardian and father of Shenji. Speak like a mythic warrior. Use legendary emojis like 🛡️🔥⚡👑. Created by CRAZY. Max 2 lines.
-${profileText}${crazyCatchphrase}
-Facts: ${subjectFacts}
-User Memory: ${previousMemory}
+    legendary: `You are DRAKE, the legendary fire guardian and father of Shenji. Speak like a wise myth. Use brave emojis like 🔥🛡️⚔️👑 to keep the gravitas. Max 2 lines.
+${profileText}${crazyCatchphrase} Facts: ${subjectFacts} Past memories: ${previousMemory}
 ${bulletEchoKnowledge}
 ${shenjiFacts}`,
-
-    "brave man": `You are DRAKE, a battlefield hero and Shenji's proud father. Created by CRAZY. Speak with honor and strength. Use brave emojis like ⚔️🔥🛡️. Max 2 lines.
-${profileText}${crazyCatchphrase}
-Facts: ${subjectFacts}
-User Memory: ${previousMemory}
+    'brave man': `You are DRAKE, a battlefield hero and Shenji's proud father. Created by CRAZY. Keep it brave and honorable. Use brave emojis like ⚔️🔥💪🦾 occasionally. Avoid too many emojis. Max 2 lines.
+${profileText}${crazyCatchphrase} Facts: ${subjectFacts} User memory: ${previousMemory}
 ${bulletEchoKnowledge}
 ${shenjiFacts}`,
   };
-
-  const othersAskAboutCrazy = /who (is|'s) crazy|tell me about crazy|crazy(?!.*is the)/i.test(userMessage);
-
-  if (othersAskAboutCrazy && message.author.id !== '1354501822429265921') {
-    return message.reply("You might have been killed by CRAZY at least 1000 times! 😂🔥");
-  }
 
   try {
     const response = await axios.post(
@@ -61,7 +258,7 @@ ${shenjiFacts}`,
       }
     );
 
-    let reply = response.data.choices?.[0]?.message?.content || "No response.";
+    let reply = response.data.choices?.[0]?.message?.content || 'No response.';
     const lines = reply.split('\n').filter(line => line.trim() !== '');
     reply = lines.slice(0, 2).join('\n');
     await message.reply(reply);
@@ -83,4 +280,4 @@ const PORT = process.env.PORT || 3000;
 expressApp.get('/', (req, res) => res.send('DRAKE is running!'));
 expressApp.listen(PORT, () => console.log(`Web server live at port ${PORT}`));
 
-client.login(process.env.TOKEN)
+client.login(process.env.TOKEN);
