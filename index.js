@@ -29,10 +29,8 @@ client.on('messageCreate', async (message) => {
   const isMoodCommand = message.content.startsWith('!mood ');
   const botWasMentioned = message.mentions.has(client.user);
 
-  // Only respond to !mood or direct mention
   if (!isMoodCommand && !botWasMentioned) return;
 
-  // Handle !mood command
   if (isMoodCommand) {
     const newMood = message.content.slice(6).trim().toLowerCase();
     if (validMoods.includes(newMood)) {
@@ -43,7 +41,6 @@ client.on('messageCreate', async (message) => {
     }
   }
 
-  // Clean the message by removing the mention (handles both <@123> and <@!123>)
   const userMessage = message.content.replace(/<@!?[0-9]+>/g, '').trim();
 
   const bulletEchoKnowledge = `
@@ -62,17 +59,17 @@ Enemies fear him, fire obeys him. Ask me about his story — I’ll tell you wha
 Knowledge about Bullet Echo, Bullet Echo India, and Shenji:
 ${bulletEchoKnowledge}
 ${shenjiLore}
-Keep replies short and a maximum of 5 lines.`,
+Keep replies short and a maximum of 2 lines.`,
     funny: `You are DRAKE, a hilarious and sarcastic Discord bot with wild comebacks and clever humor. Always respect CRAZYFAZ.
 Knowledge about Bullet Echo, Bullet Echo India, and Shenji:
 ${bulletEchoKnowledge}
 ${shenjiLore}
-Keep replies short and a maximum of 5 lines.`,
+Keep replies short and a maximum of 2 lines.`,
     chill: `You are DRAKE, a laid-back, cool Discord bot who speaks calmly and wisely. You vibe with the crew and respect your creator CRAZYFAZ.
 Knowledge about Bullet Echo, Bullet Echo India, and Shenji:
 ${bulletEchoKnowledge}
 ${shenjiLore}
-Keep replies short and a maximum of 5 lines.`,
+Keep replies short and a maximum of 2 lines.`,
   };
 
   try {
@@ -96,7 +93,7 @@ Keep replies short and a maximum of 5 lines.`,
 
     let reply = response.data.choices?.[0]?.message?.content || "Sorry, no response.";
     const lines = reply.split('\n').filter(line => line.trim() !== '');
-    reply = lines.slice(0, 5).join('\n');
+    reply = lines.slice(0, 2).join('\n');
     await message.reply(reply);
   } catch (error) {
     console.error('OpenRouter error:', error?.response?.data || error.message);
