@@ -21,7 +21,7 @@ client.commands = new Collection();
 
 const deleteCommand = new SlashCommandBuilder()
   .setName('delete')
-  .setDescription('Delete last 50 messages from a user')
+  .setDescription('Delete recent messages from a user (max 15)')
   .addUserOption(option =>
     option.setName('target')
       .setDescription('The user whose messages will be deleted')
@@ -207,28 +207,35 @@ client.on('interactionCreate', async interaction => {
     const channel = interaction.channel;
 
     try {
-      const messages = await channel.messages.fetch({ limit: 100 });
-      const userMessages = messages.filter(m => m.author.id === target.id);
-      const toDelete = Array.from(userMessages.values()).slice(0, 50);
+      await interaction.deferReply({ ephemeral: true });
 
-      await Promise.all(toDelete.map(msg => msg.delete()));
+      const messages = await channel.messages.fetch({ limit: 50 });
+      const userMessages = messages
+        .filter(m =>
+          m.author.id === target.id &&
+          (Date.now() - m.createdTimestamp) < 14 * 24 * 60 * 60 * 1000
+        )
+        .first(15);
 
-      await interaction.reply({
-        content: `Deleted last ${toDelete.length} messages from <@${target.id}>.`,
-        flags: 1 << 6
-      });
-    } catch (err) {
-      console.error(err);
-      if (interaction.replied || interaction.deferred) {
-        await interaction.editReply({
-          content: 'Failed to delete messages.',
-        });
-      } else {
-        await interaction.reply({
-          content: 'Failed to delete messages.',
-          flags: 1 << 6
+      if (userMessages.length === 0) {
+        return await interaction.editReply({
+          content: `No recent messages found from <@${target.id}>.`
         });
       }
+
+      if (userMessages.length > 1) {
+        await channel.bulkDelete(userMessages, true);
+      } else {
+        await userMessages[0].delete();
+      }
+
+      await interaction.editReply({
+        content: `Deleted ${userMessages.length} message(s) from <@${target.id}>.`
+      });
+
+    } catch (err) {
+      console.error(err);
+      await interaction.editReply({ content: 'Failed to delete messages.' });
     }
   }
 });
@@ -238,4 +245,4 @@ const PORT = process.env.PORT || 3000;
 expressApp.get('/', (req, res) => res.send('DRAKE is running!'));
 expressApp.listen(PORT, () => console.log(`Web server live at port ${PORT}`));
 
-client.login(process.env.TOKEN);
+client.login(process.env.TOKEN)
