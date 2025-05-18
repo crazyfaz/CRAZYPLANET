@@ -208,11 +208,10 @@ client.on('interactionCreate', async interaction => {
 
     try {
       const messages = await channel.messages.fetch({ limit: 100 });
-      const toDelete = messages.filter(m => m.author.id === target.id).first(50);
+      const userMessages = messages.filter(m => m.author.id === target.id);
+      const toDelete = Array.from(userMessages.values()).slice(0, 50);
 
-      for (const msg of toDelete) {
-        await msg.delete();
-      }
+      await Promise.all(toDelete.map(msg => msg.delete()));
 
       await interaction.reply({
         content: `Deleted last ${toDelete.length} messages from <@${target.id}>.`,
@@ -220,10 +219,16 @@ client.on('interactionCreate', async interaction => {
       });
     } catch (err) {
       console.error(err);
-      await interaction.reply({
-        content: 'Failed to delete messages.',
-        flags: 1 << 6
-      });
+      if (interaction.replied || interaction.deferred) {
+        await interaction.editReply({
+          content: 'Failed to delete messages.',
+        });
+      } else {
+        await interaction.reply({
+          content: 'Failed to delete messages.',
+          flags: 1 << 6
+        });
+      }
     }
   }
 });
