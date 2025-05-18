@@ -1,5 +1,7 @@
 require('dotenv').config();
-const { Client, GatewayIntentBits } = require('discord.js');
+const fs = require('fs');
+const path = require('path');
+const { Client, GatewayIntentBits, Collection } = require('discord.js');
 const axios = require('axios');
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
@@ -32,6 +34,20 @@ const client = new Client({
     GatewayIntentBits.MessageContent,
   ],
 });
+
+client.commands = new Collection();
+
+// Load commands dynamically from commands folder
+const commandsPath = path.join(__dirname, 'commands');
+if (fs.existsSync(commandsPath)) {
+  const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+  for (const file of commandFiles) {
+    const command = require(path.join(commandsPath, file));
+    client.commands.set(command.data.name, command);
+  }
+} else {
+  console.warn('Commands folder not found, skipping command loading.');
+}
 
 // Promisify db.run for async/await usage
 function runQuery(sql, params = []) {
@@ -101,6 +117,25 @@ client.once('ready', async () => {
   await upsertCrazyProfile(myUserId);
 
   client.on('messageCreate', handleMessage);
+});
+
+// Slash command handler
+client.on('interactionCreate', async interaction => {
+  if (!interaction.isChatInputCommand()) return;
+
+  const command = client.commands.get(interaction.commandName);
+  if (!command) return;
+
+  try {
+    await command.execute(interaction);
+  } catch (error) {
+    console.error(error);
+    if (interaction.replied || interaction.deferred) {
+      await interaction.followUp({ content: 'There was an error executing that command.', ephemeral: true });
+    } else {
+      await interaction.reply({ content: 'There was an error executing that command.', ephemeral: true });
+    }
+  }
 });
 
 async function handleMessage(message) {
@@ -239,4 +274,4 @@ const PORT = process.env.PORT || 3000;
 expressApp.get('/', (req, res) => res.send('DRAKE is running!'));
 expressApp.listen(PORT, () => console.log(`Web server live at port ${PORT}`));
 
-client.login(process.env.TOKEN);
+client.login(process.env.TOKEN)
