@@ -26,18 +26,13 @@ client.removeAllListeners('messageCreate');
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
 
-  // Only respond if in the correct guild and channel
-  if (message.guild?.id === '1367900836801286244') {
-    if (message.channel.id !== '1372966958139576340') return;
-  }
-
   const isMoodCommand = message.content.startsWith('!mood ');
   const botWasMentioned = message.mentions.has(client.user);
 
   // Only respond to !mood or direct mention
   if (!isMoodCommand && !botWasMentioned) return;
 
-  // Mood switch logic
+  // Handle !mood command
   if (isMoodCommand) {
     const newMood = message.content.slice(6).trim().toLowerCase();
     if (validMoods.includes(newMood)) {
@@ -48,8 +43,8 @@ client.on('messageCreate', async (message) => {
     }
   }
 
-  // Clean the message by removing the mention
-  const userMessage = message.content.replace(`<@${client.user.id}>`, '').trim();
+  // Clean the message by removing the mention (handles both <@123> and <@!123>)
+  const userMessage = message.content.replace(/<@!?[0-9]+>/g, '').trim();
 
   const bulletEchoKnowledge = `
 Bullet Echo is a tactical top-down multiplayer shooter with a focus on stealth, teamwork, and weapon variety.
@@ -117,11 +112,11 @@ Keep replies short and a maximum of 5 lines.`,
   }
 });
 
-// Keep-alive server
+// Keep-alive web server
 const expressApp = express();
 const PORT = process.env.PORT || 3000;
 expressApp.get('/', (req, res) => res.send('DRAKE is running!'));
 expressApp.listen(PORT, () => console.log(`Web server live at port ${PORT}`));
 
-// Login bot
+// Login the bot
 client.login(process.env.TOKEN);
