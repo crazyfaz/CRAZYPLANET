@@ -20,10 +20,12 @@ const validMoods = ['gangster', 'funny', 'chill'];
 
 client.once('ready', () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
+
+  // Attach only once after bot is ready
+  client.on('messageCreate', handleMessage);
 });
 
-client.removeAllListeners('messageCreate');
-client.on('messageCreate', async (message) => {
+async function handleMessage(message) {
   if (message.author.bot) return;
 
   const isMoodCommand = message.content.startsWith('!mood ');
@@ -31,6 +33,7 @@ client.on('messageCreate', async (message) => {
 
   if (!isMoodCommand && !botWasMentioned) return;
 
+  // Mood switching logic
   if (isMoodCommand) {
     const newMood = message.content.slice(6).trim().toLowerCase();
     if (validMoods.includes(newMood)) {
@@ -41,6 +44,7 @@ client.on('messageCreate', async (message) => {
     }
   }
 
+  // Remove mention from message
   const userMessage = message.content.replace(/<@!?[0-9]+>/g, '').trim();
 
   const bulletEchoKnowledge = `
@@ -49,9 +53,10 @@ Bullet Echo India is the Indian localized version with special events, Indian-th
 `;
 
   const shenjiLore = `
-Shenji is my son. I raised him in the flames, taught him to control fire since he was a boy.
-He became the Fire Lord, wielding a fiery shotgun called the Dragon’s Roar.
-Enemies fear him, fire obeys him. Ask me about his story — I’ll tell you what made him a legend.
+Shenji is my son. I raised him in fire since childhood. Taught him to master it.
+He became Fire Lord. His shotgun spits flame and fear.
+He was once a quiet kid — now a burning legend.
+Ask me about him if you dare.
 `;
 
   const systemPrompts = {
@@ -107,13 +112,13 @@ Keep replies short and a maximum of 2 lines.`,
       await message.reply('Something went wrong. Try again!');
     }
   }
-});
+}
 
-// Keep-alive web server
+// Keep-alive web server for uptime
 const expressApp = express();
 const PORT = process.env.PORT || 3000;
 expressApp.get('/', (req, res) => res.send('DRAKE is running!'));
 expressApp.listen(PORT, () => console.log(`Web server live at port ${PORT}`));
 
-// Login the bot
+// Start the bot
 client.login(process.env.TOKEN);
