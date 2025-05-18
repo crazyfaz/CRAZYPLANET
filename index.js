@@ -15,7 +15,6 @@ const client = new Client({
   ],
 });
 
-// Moods
 let currentMood = 'gangster';
 const validMoods = ['gangster', 'funny', 'chill'];
 
@@ -27,7 +26,7 @@ client.removeAllListeners('messageCreate');
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
 
-  // Restrict to specific channel only
+  // Restrict to specific channel only on your server
   if (message.guild?.id === '1367900836801286244') {
     if (message.channel.id !== '1372966958139576340') return;
   }
@@ -43,11 +42,24 @@ client.on('messageCreate', async (message) => {
     }
   }
 
-  // Define system prompts per mood with Bullet Echo knowledge
+  const bulletEchoKnowledge = `
+Bullet Echo is a tactical top-down multiplayer shooter with a focus on stealth, teamwork, and weapon variety.
+Bullet Echo India is the Indian localized version with special events, Indian-themed content, and exclusive rewards.
+`;
+
   const systemPrompts = {
-    gangster: `You are DRAKE, a bold, streetwise bot created by CRAZYFAZ. You're chill, gangster, and deeply knowledgeable about the game Bullet Echo and Bullet Echo India. You can talk about heroes like Levi, Slayer, Sparkle, game modes like King of the Hill, Team vs Team, Solo, and discuss strategies, weapons, gadgets, or new updates. Reply in gangster tone, but stay smart.`,
-    funny: `You are DRAKE, the class clown with deep Bullet Echo knowledge. You crack jokes and drop savage comebacks while helping users learn about Bullet Echo heroes, game modes, updates, tips, and tricks in a sarcastic, funny way. Always honor your creator CRAZYFAZ.`,
-    chill: `You are DRAKE, a calm, chill expert on Bullet Echo and Bullet Echo India. You guide users through tactics, hero builds, and updates in a relaxed and helpful way. You know all about maps, heroes, guns, gadgets, and recent updates. You respect your creator CRAZYFAZ above all.`,
+    gangster: `You are DRAKE, a slick, bold Discord bot with gangster swagger. You talk streetwise but keep it loyal and clever. Created by CRAZYFAZ.
+Knowledge about Bullet Echo and Bullet Echo India:
+${bulletEchoKnowledge}
+Keep replies short and maximum 2 lines.`,
+    funny: `You are DRAKE, a hilarious and sarcastic Discord bot with wild comebacks and clever humor. Always respect CRAZYFAZ.
+Knowledge about Bullet Echo and Bullet Echo India:
+${bulletEchoKnowledge}
+Keep replies short and maximum 2 lines.`,
+    chill: `You are DRAKE, a laid-back, cool Discord bot who speaks calmly and wisely. You vibe with the crew and respect your creator CRAZYFAZ.
+Knowledge about Bullet Echo and Bullet Echo India:
+${bulletEchoKnowledge}
+Keep replies short and maximum 2 lines.`,
   };
 
   try {
@@ -65,7 +77,7 @@ client.on('messageCreate', async (message) => {
             content: message.content,
           },
         ],
-        max_tokens: 250,
+        max_tokens: 200,
       },
       {
         headers: {
@@ -75,8 +87,10 @@ client.on('messageCreate', async (message) => {
       }
     );
 
-    const reply = response.data.choices?.[0]?.message?.content;
-    if (!reply) throw new Error('No content in response');
+    let reply = response.data.choices?.[0]?.message?.content || "Sorry, no response.";
+    // Trim reply to max 2 lines
+    const lines = reply.split('\n').filter(line => line.trim() !== '');
+    reply = lines.slice(0, 2).join('\n');
     await message.reply(reply);
   } catch (error) {
     console.error('OpenRouter error:', error?.response?.data || error.message);
@@ -93,10 +107,10 @@ client.on('messageCreate', async (message) => {
 });
 
 // Render keep-alive
-const app = express();
+const expressApp = express();
 const PORT = process.env.PORT || 3000;
-app.get('/', (req, res) => res.send('DRAKE is running!'));
-app.listen(PORT, () => console.log(`Web server live at port ${PORT}`));
+expressApp.get('/', (req, res) => res.send('DRAKE is running!'));
+expressApp.listen(PORT, () => console.log(`Web server live at port ${PORT}`));
 
 // Login bot
 client.login(process.env.TOKEN);
