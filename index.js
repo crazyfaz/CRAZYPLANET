@@ -114,7 +114,7 @@ client.on('interactionCreate', async interaction => {
     const user = interaction.options.getUser('target');
     await runQuery(`DELETE FROM memories WHERE user_id = ?`, [user.id]);
     return interaction.reply({
-      content: `Deleted memory of ${user.username}.`,
+      content: `Deleted last few messages from ${user.username}.`,
       flags: 1 << 6, // Ephemeral response
     });
   }
