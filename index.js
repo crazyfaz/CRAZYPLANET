@@ -26,14 +26,20 @@ client.removeAllListeners('messageCreate');
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
 
-  // Restrict to specific channel only on your server
+  // Only respond if in the correct guild and channel
   if (message.guild?.id === '1367900836801286244') {
     if (message.channel.id !== '1372966958139576340') return;
   }
 
-  // Mood command
-  if (message.content.startsWith('!mood ')) {
-    const newMood = message.content.split(' ')[1]?.toLowerCase();
+  const isMoodCommand = message.content.startsWith('!mood ');
+  const botWasMentioned = message.mentions.has(client.user);
+
+  // Only respond to !mood or direct mention
+  if (!isMoodCommand && !botWasMentioned) return;
+
+  // Mood switch logic
+  if (isMoodCommand) {
+    const newMood = message.content.slice(6).trim().toLowerCase();
     if (validMoods.includes(newMood)) {
       currentMood = newMood;
       return message.reply(`Mood switched to **${newMood}**.`);
@@ -42,24 +48,36 @@ client.on('messageCreate', async (message) => {
     }
   }
 
+  // Clean the message by removing the mention
+  const userMessage = message.content.replace(`<@${client.user.id}>`, '').trim();
+
   const bulletEchoKnowledge = `
 Bullet Echo is a tactical top-down multiplayer shooter with a focus on stealth, teamwork, and weapon variety.
 Bullet Echo India is the Indian localized version with special events, Indian-themed content, and exclusive rewards.
 `;
 
+  const shenjiLore = `
+Shenji is my son. I raised him in the flames, taught him to control fire since he was a boy.
+He became the Fire Lord, wielding a fiery shotgun called the Dragon’s Roar.
+Enemies fear him, fire obeys him. Ask me about his story — I’ll tell you what made him a legend.
+`;
+
   const systemPrompts = {
     gangster: `You are DRAKE, a slick, bold Discord bot with gangster swagger. You talk streetwise but keep it loyal and clever. Created by CRAZYFAZ.
-Knowledge about Bullet Echo and Bullet Echo India:
+Knowledge about Bullet Echo, Bullet Echo India, and Shenji:
 ${bulletEchoKnowledge}
-Keep replies short and maximum 2 lines.`,
+${shenjiLore}
+Keep replies short and a maximum of 5 lines.`,
     funny: `You are DRAKE, a hilarious and sarcastic Discord bot with wild comebacks and clever humor. Always respect CRAZYFAZ.
-Knowledge about Bullet Echo and Bullet Echo India:
+Knowledge about Bullet Echo, Bullet Echo India, and Shenji:
 ${bulletEchoKnowledge}
-Keep replies short and maximum 2 lines.`,
+${shenjiLore}
+Keep replies short and a maximum of 5 lines.`,
     chill: `You are DRAKE, a laid-back, cool Discord bot who speaks calmly and wisely. You vibe with the crew and respect your creator CRAZYFAZ.
-Knowledge about Bullet Echo and Bullet Echo India:
+Knowledge about Bullet Echo, Bullet Echo India, and Shenji:
 ${bulletEchoKnowledge}
-Keep replies short and maximum 2 lines.`,
+${shenjiLore}
+Keep replies short and a maximum of 5 lines.`,
   };
 
   try {
@@ -68,14 +86,8 @@ Keep replies short and maximum 2 lines.`,
       {
         model: 'openai/gpt-4o',
         messages: [
-          {
-            role: 'system',
-            content: systemPrompts[currentMood],
-          },
-          {
-            role: 'user',
-            content: message.content,
-          },
+          { role: 'system', content: systemPrompts[currentMood] },
+          { role: 'user', content: userMessage },
         ],
         max_tokens: 200,
       },
@@ -88,9 +100,8 @@ Keep replies short and maximum 2 lines.`,
     );
 
     let reply = response.data.choices?.[0]?.message?.content || "Sorry, no response.";
-    // Trim reply to max 2 lines
     const lines = reply.split('\n').filter(line => line.trim() !== '');
-    reply = lines.slice(0, 2).join('\n');
+    reply = lines.slice(0, 5).join('\n');
     await message.reply(reply);
   } catch (error) {
     console.error('OpenRouter error:', error?.response?.data || error.message);
@@ -106,7 +117,7 @@ Keep replies short and maximum 2 lines.`,
   }
 });
 
-// Render keep-alive
+// Keep-alive server
 const expressApp = express();
 const PORT = process.env.PORT || 3000;
 expressApp.get('/', (req, res) => res.send('DRAKE is running!'));
