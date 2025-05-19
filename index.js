@@ -80,13 +80,11 @@ client.once('ready', async () => {
 });
 
 async function handleMessage(message) {
-  if (message.author.bot) return;
+  if (message.author.id === client.user.id) return; // Allow other bots, skip self
 
   const isMoodCommand = message.content.startsWith('!mood ');
   const isDrawCommand = message.content.startsWith('!draw ');
-  const botMentioned = message.mentions.has(client.user);
 
-  // Only delete the message if it's a command
   if (isMoodCommand || isDrawCommand) {
     setTimeout(() => {
       message.delete().catch(() => {});
@@ -134,8 +132,6 @@ async function handleMessage(message) {
     }
     return;
   }
-
-  if (!isMoodCommand && !botMentioned && !isDrawCommand) return;
 
   const learnMatch = message.content.match(/^(.+) is the (.+)$/i);
   if (learnMatch) {
