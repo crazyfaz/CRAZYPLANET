@@ -2,34 +2,43 @@ const { SlashCommandBuilder } = require('discord.js');
 
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName('delete')
-    .setDescription('Deletes the latest 15 messages from the mentioned user')
-    .addUserOption(option =>
-      option.setName('target')
-        .setDescription('User to delete messages from')
-        .setRequired(true)
-    ),
-
+    .setName('shenji')
+    .setDescription('Get Shenji gear set recommendations'),
+  
   async execute(interaction) {
-    const targetUser = interaction.options.getUser('target');
-    const channel = interaction.channel;
+    const today = new Date();
+    const formattedDate = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()}`;
 
-    if (!channel || !channel.messages) {
-      return interaction.reply({ content: 'Unable to access messages in this channel.', ephemeral: true });
-    }
+    await interaction.reply({
+      content: `**DRAKE**  
+> **Heroes**  
+> **Shenji**  
+> Gear recommendations based on the rarity (level)
 
-    try {
-      const messages = await channel.messages.fetch({ limit: 100 });
-      const toDelete = messages.filter(m => m.author.id === targetUser.id).first(15);
+---
 
-      for (const msg of toDelete) {
-        await msg.delete();
-      }
+**More Builds**  
+**[YouTube Guide]** [Click Here](https://youtube.com) *(placeholder)*
 
-      await interaction.reply(`Deleted ${toDelete.length} messages from ${targetUser.tag}.`);
-    } catch (error) {
-      console.error(error);
-      await interaction.reply({ content: 'Failed to delete some messages.', ephemeral: true });
-    }
+---
+
+### **BUILD A** – *Best Starter Build for Beginners*  
+> ![Build A](https://i.imgur.com/VRWQnrl.png)
+
+---
+
+### **BUILD B** – *Good Rare Gears for Advanced Play*  
+> ![Build B](https://i.imgur.com/YtnPmKH.png)
+
+---
+
+### **BUILD C** – *Bonuses for Extremely High Performance*  
+> ![Build C](https://i.imgur.com/Fa7XQLM.png)
+
+---
+
+*Date Updated: ${formattedDate}*`,
+      ephemeral: false
+    });
   }
-};
+}
